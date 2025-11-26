@@ -65,15 +65,13 @@ def mask_out_distractors(image, regions):
     return masked_img
 
 def preprocess_image_rgb(image):
-    # --- STEP 1: RESTORED FILTERING ---
-    # We are NOT doing Gamma/CLAHE (Contrast Boosting) because it hurts separation.
-    # We ARE doing Blurring to remove sensor noise and smooth the mask.
+    # # Median Blur: Good for removing hot pixels (salt-and-pepper)
+    # processed = cv2.medianBlur(image, 5)
     
-    # Median Blur: Good for removing hot pixels (salt-and-pepper)
-    processed = cv2.medianBlur(image, 5)
-    
-    # Gaussian Blur: Good for smoothing color transitions
-    processed = cv2.GaussianBlur(processed, (5, 5), 0)
+    # # Gaussian Blur: Good for smoothing color transitions
+    # processed = cv2.GaussianBlur(processed, (5, 5), 0)
+
+    processed = image.copy()
     
     return processed
 
@@ -117,7 +115,7 @@ def process_single_image(filepath, crop_config, blackout_regions):
     print(f"\n--- Processing: {filepath} ---")
     original_img = load_image(filepath)
 
-    if original_img is None: return
+    if original_img is None: return None
 
     # 1. Crop
     do_crop, coords = crop_config
@@ -131,32 +129,43 @@ def process_single_image(filepath, crop_config, blackout_regions):
 
     # 3. Ground Truth
     base_name = os.path.splitext(filepath)[0]
-    mask_path = base_name + ".tif" 
+    # Adjust replacement to match your folder structure
+    base_name_gt = base_name.replace("Raw_images", "Binary_masks")
+    mask_path = base_name_gt + ".tif"
+    
+    # Fallback if extension is different or folder structure is flat
+    if not os.path.exists(mask_path):
+         mask_path = base_name_gt + ".png"
+
     gt_mask = load_ground_truth(mask_path, original_img.shape)
 
     # 4. Pipeline
     processed_rgb = preprocess_image_rgb(original_img)
-    # UPDATED: k=3 to separate Spit from Light Background
     kmeans_mask, centers, labels = segment_kmeans_rgb(processed_rgb, k=3)
     final_mask = cleanup_mask(kmeans_mask)
     
     # 5. Metrics
+    metrics = None
     metrics_text = "Coverage: {:.2f}%".format(np.count_nonzero(final_mask)/final_mask.size*100)
+    
     if gt_mask is not None:
         acc, prec, rec = evaluate_performance(final_mask, gt_mask)
+        metrics = (os.path.basename(filepath), acc, prec, rec) # Return metrics
         metrics_text += f"\nAcc: {acc:.3f}\nPrec: {prec:.3f}\nRec: {rec:.3f}"
         print(f"METRICS: Acc={acc:.3f}, Prec={prec:.3f}, Rec={rec:.3f}")
     else:
         print("No ground truth mask found.")
+        metrics = (os.path.basename(filepath), 0.0, 0.0, 0.0) # Dummy metrics
 
     # 6. Visualize
     visualize_results(original_img, processed_rgb, final_mask, gt_mask, centers, filepath, metrics_text)
+    
+    return metrics
 
 def visualize_results(original, processed, mask, gt_mask, centers, title, metrics_text):
     luminance = 0.114 * centers[:, 0] + 0.587 * centers[:, 1] + 0.299 * centers[:, 2]
     spit_idx = np.argsort(luminance)[-1]
     
-    # ADDED: Logic to determine columns based on GT and add one for 3D plot
     cols_base = 4 if gt_mask is not None else 3
     cols = cols_base + 1
     
@@ -215,13 +224,44 @@ def visualize_results(original, processed, mask, gt_mask, centers, title, metric
     plt.show()
 
 def main():
-    files_to_process = ['amely_unsupervised_work/1.ARW', 'amely_unsupervised_work/2.ARW', 'amely_unsupervised_work/3.ARW', 'amely_unsupervised_work/4.ARW', 'amely_unsupervised_work/5.ARW'] 
     DO_CROP = False
     CROP_COORDS = (200, 600, 200, 600) 
     BLACKOUT_REGIONS = [] 
 
+    # Generate list for 1.tif to 10.tif
+    # Adjust extension if they are .ARW or .jpg
+    files_to_process = [f'Saliva_Segmentation_dataset/Raw_images/{i}.tif' for i in range(1, 11)]
+    
+    all_metrics = []
+
+    print("Starting Batch Process...")
     for filename in files_to_process:
-        process_single_image(filename, (DO_CROP, CROP_COORDS), BLACKOUT_REGIONS)
+        result = process_single_image(filename, (DO_CROP, CROP_COORDS), BLACKOUT_REGIONS)
+        if result:
+            all_metrics.append(result)
+
+    # --- PRINT SUMMARY TABLE ---
+    print("\n" + "="*60)
+    print(f"{'IMAGE':<20} | {'ACCURACY':<10} | {'PRECISION':<10} | {'RECALL':<10}")
+    print("-" * 60)
+    
+    acc_sum, prec_sum, rec_sum = 0, 0, 0
+    count = 0
+
+    for name, acc, prec, rec in all_metrics:
+        # Only count if GT existed (non-zero stats)
+        # Use a small epsilon check or just check if acc > 0
+        print(f"{name:<20} | {acc:<10.3f} | {prec:<10.3f} | {rec:<10.3f}")
+        if acc > 0:
+            acc_sum += acc
+            prec_sum += prec
+            rec_sum += rec
+            count += 1
+            
+    print("-" * 60)
+    if count > 0:
+        print(f"{'AVERAGE':<20} | {acc_sum/count:<10.3f} | {prec_sum/count:<10.3f} | {rec_sum/count:<10.3f}")
+    print("="*60 + "\n")
 
 if __name__ == "__main__":
     main()

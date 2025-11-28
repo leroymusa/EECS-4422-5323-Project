@@ -1,0 +1,57 @@
+OFFICE HOUR NOTES 
+
+Do spatial filtering if you have time! 
+- Maybe you can weight it? 
+Threholding method has a scalar decision variable, so Otsu and K-Means are not thresholding methods  
+Mixture model: probabilistic model, which cause is more probable? 
+
+Amely: Experiment with clusters! 
+- Report result of two! 
+- Report the average for each condition! 
+- Assume biggest distance is foreground! 
+- 3 clusters --> 2 for foreground/1 for background, possible problems! 
+- Visualise marginal projections --> 
+- Be aware that k-means is not guaranteed to converge on consistent answer 
+- Run it a number of times! 
+- Problem: inference time: you don't know what the right answer is 
+- Not probabilistic model, so it's a bit weak 
+- Could try to partition data to take three materials, could look to see how many times you need to run with random 
+initial conditions to get most effective cluster, but how do you judge which is most effective? 
+- Could run ten times, and then get one solution five times (so most common solution is best one)
+- Use some square deviation of the samples is minimal, so you make the clusters tighter! 
+- Between variance divided within variance? Normalise by squared distance between centers, and sum of squared deviation
+between centers, ensure distinctness of clusters! 
+- These are heuristics! 
+- Try to get best k-means model, give it to Leroy 
+- Try to pass off all k-means solutions to Leroy so he can run in multiple conditions 
+
+Leroy: once data is fitted, evaluate the pseudo-log likelihood, called pseudo-log because using data to fit model 
+- Probabilistic model now gives a lot per data point you try to fit 
+- Don't have to worry about foreground/background, because you get a probability of foreground/background instead of a 
+classification 
+- Can then evaluate total pseudo-log likelihood, then see it converge to a result 
+- Only guaranteed to converge to local optimum 
+- How do you choose the local optimum? Compute the probability of each solution, and choose the most probable solution 
+
+Patrick: 
+- Bootstrapping --> instead of cutting out individual points, redo the process with slightly varying points? 
+- That's Monte-Carlo simulation, this depends on your knowledge of input error 
+- Propagate that input error to your solution, but you can analytically propagate it! 
+- Monte-Carlo: distributional model of the noise, sample from it to propagate 
+- This is going above and beyond! 
+- Bootstrapping is maybe a bad idea because our data does not have degeneracy, but bootstrapping does, so degeneracy 
+is induced due to very few points 
+- In bootstrapping, all samples mimic original method 
+- Patrick thinks if sampling same point twice, could lead to degeneracy, Prof says solver will normally choose minimum 
+norm parameter (vector), which will converge, but it will be underconstrained! 
+- Multiple params satisfy the homogeneous equations! 
+- Problem: Eleven degrees of freedom, twelve equations, if you miss any two of the coordinates then your matrix is now 
+not rank 11, it's less than rank 11, so the solution is incorrect 
+- Problem: if coords on same plane, it becomes degenerate! 
+- What should be done instead? 
+- Instruct TA to be cognisant of this, discuss this in the report and note it in your solution so it's recognised 
+during grading 
+- If you do Monte-Carlo, this breaks bootstrapping and now you have no idea what 'true uncertainty' is 
+- Annotation of 2D points may not be only source of error, could be that there's error in the 3D dimensions! 
+- Some of that error might never be known, it would depend on how overconstrained the problem is 
+- To sum up: just Monte-Carlo sampling may not fully capture uncertainty in parameters 

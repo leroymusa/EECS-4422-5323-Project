@@ -65,21 +65,14 @@ def mask_out_distractors(image, regions):
     return masked_img
 
 def preprocess_image_rgb(image):
-    # # Median Blur: Good for removing hot pixels (salt-and-pepper)
-    # processed = cv2.medianBlur(image, 5)
-    
-    # # Gaussian Blur: Good for smoothing color transitions
-    # processed = cv2.GaussianBlur(processed, (5, 5), 0)
+    # --- NO FILTERING (Best results for this dataset) ---
+    return image.copy()
 
-    processed = image.copy()
-    
-    return processed
-
-def segment_kmeans_rgb(image, k=3):
-    # k=3 splits data into: [Shadows], [Tissue/Tray], [Bright Spit]
+def segment_kmeans_rgb(image, k):
     pixel_values = image.reshape((-1, 3))
     pixel_values = np.float32(pixel_values)
 
+    # '10' is number of random initializations (Stability)
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
     _, labels, (centers) = cv2.kmeans(pixel_values, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
 
@@ -94,7 +87,6 @@ def segment_kmeans_rgb(image, k=3):
 
 def cleanup_mask(mask):
     kernel = np.ones((5,5), np.uint8)
-    # Tiny bit of cleanup to remove single hot pixels
     cleaned = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
     cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_CLOSE, kernel, iterations=1)
     return cleaned
@@ -106,162 +98,175 @@ def evaluate_performance(pred_mask, true_mask):
     TN = np.sum((p == 0) & (t == 0))
     FP = np.sum((p == 1) & (t == 0))
     FN = np.sum((p == 0) & (t == 1))
+    
     accuracy = (TP + TN) / (TP + TN + FP + FN + 1e-6)
     precision = TP / (TP + FP + 1e-6)
     recall = TP / (TP + FN + 1e-6)
-    return accuracy, precision, recall
+    
+    # --- DICE SCORE (F1 Score) ---
+    dice = (2 * TP) / (2 * TP + FP + FN + 1e-6)
+    
+    return accuracy, precision, recall, dice
 
-def process_single_image(filepath, crop_config, blackout_regions):
-    print(f"\n--- Processing: {filepath} ---")
+def process_single_image(filepath, k, save_plot=True):
     original_img = load_image(filepath)
-
     if original_img is None: return None
 
-    # 1. Crop
-    do_crop, coords = crop_config
-    if do_crop:
-        y1, y2, x1, x2 = coords
-        original_img = original_img[y1:y2, x1:x2]
-
-    # 2. Blackout
-    if blackout_regions:
-        original_img = mask_out_distractors(original_img, blackout_regions)
-
-    # 3. Ground Truth
+    # 1. Load Ground Truth
     base_name = os.path.splitext(filepath)[0]
-    # Adjust replacement to match your folder structure
     base_name_gt = base_name.replace("Raw_images", "Binary_masks")
     mask_path = base_name_gt + ".tif"
-    
-    # Fallback if extension is different or folder structure is flat
-    if not os.path.exists(mask_path):
-         mask_path = base_name_gt + ".png"
-
+    if not os.path.exists(mask_path): mask_path = base_name_gt + ".png"
     gt_mask = load_ground_truth(mask_path, original_img.shape)
 
-    # 4. Pipeline
+    # 2. Pipeline
     processed_rgb = preprocess_image_rgb(original_img)
-    kmeans_mask, centers, labels = segment_kmeans_rgb(processed_rgb, k=3)
+    kmeans_mask, centers, labels = segment_kmeans_rgb(processed_rgb, k=k)
     final_mask = cleanup_mask(kmeans_mask)
     
-    # 5. Metrics
+    # 3. Metrics
     metrics = None
-    metrics_text = "Coverage: {:.2f}%".format(np.count_nonzero(final_mask)/final_mask.size*100)
-    
     if gt_mask is not None:
-        acc, prec, rec = evaluate_performance(final_mask, gt_mask)
-        metrics = (os.path.basename(filepath), acc, prec, rec) # Return metrics
-        metrics_text += f"\nAcc: {acc:.3f}\nPrec: {prec:.3f}\nRec: {rec:.3f}"
-        print(f"METRICS: Acc={acc:.3f}, Prec={prec:.3f}, Rec={rec:.3f}")
+        acc, prec, rec, dice = evaluate_performance(final_mask, gt_mask)
+        metrics = (os.path.basename(filepath), acc, prec, rec, dice)
     else:
-        print("No ground truth mask found.")
-        metrics = (os.path.basename(filepath), 0.0, 0.0, 0.0) # Dummy metrics
+        metrics = (os.path.basename(filepath), 0.0, 0.0, 0.0, 0.0)
 
-    # 6. Visualize
-    visualize_results(original_img, processed_rgb, final_mask, gt_mask, centers, filepath, metrics_text)
+    # 4. Visualize & Save
+    if save_plot:
+        # Determine save path relative to input file
+        input_dir = os.path.dirname(filepath)
+        save_dir = os.path.join(input_dir, 'pictures')
+        
+        # Create directory if it doesn't exist
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+            
+        filename_no_ext = os.path.splitext(os.path.basename(filepath))[0]
+        save_filename = f"{filename_no_ext}_k{k}.png"
+        save_path = os.path.join(save_dir, save_filename)
+        
+        visualize_results(original_img, processed_rgb, final_mask, gt_mask, centers, k, os.path.basename(filepath), save_path)
     
     return metrics
 
-def visualize_results(original, processed, mask, gt_mask, centers, title, metrics_text):
+def visualize_results(original, processed, mask, gt_mask, centers, k, title, save_path=None):
     luminance = 0.114 * centers[:, 0] + 0.587 * centers[:, 1] + 0.299 * centers[:, 2]
     spit_idx = np.argsort(luminance)[-1]
+
+    fig = plt.figure(figsize=(18, 10))
+
+    # 1. Original
+    plt.subplot(2, 3, 1)
+    plt.imshow(cv2.cvtColor(original, cv2.COLOR_BGR2RGB))
+    plt.title(f"Input: {title}")
+    plt.axis('off')
+
+    # 2. Histogram (Marginal Projections)
+    plt.subplot(2, 3, 2)
+    colors = ('b', 'g', 'r')
+    for i, color in enumerate(colors):
+        hist = cv2.calcHist([original], [i], None, [256], [0, 256])
+        plt.plot(hist, color=color, alpha=0.6)
+        for cid, center in enumerate(centers):
+            style = '--' if cid == spit_idx else ':'
+            plt.axvline(x=center[i], color=color, linestyle=style, alpha=0.5)
+    plt.title(f"Marginal Projections (Hist) k={k}\nDashed=Spit Center")
+    plt.xlim([0, 256])
+
+    # 3. 3D Scatter Plot (Restored)
+    ax3 = fig.add_subplot(2, 3, 3, projection='3d')
     
-    cols_base = 4 if gt_mask is not None else 3
-    cols = cols_base + 1
-    
-    fig = plt.figure(figsize=(5*cols, 6))
-
-    # Input
-    ax1 = fig.add_subplot(1, cols, 1)
-    ax1.imshow(cv2.cvtColor(original, cv2.COLOR_BGR2RGB))
-    ax1.set_title(f"Input\n{os.path.basename(title)}")
-    ax1.axis('on')
-
-    # Processed
-    ax2 = fig.add_subplot(1, cols, 2)
-    ax2.imshow(cv2.cvtColor(processed, cv2.COLOR_BGR2RGB))
-    ax2.set_title("Blurred (Median+Gauss)")
-    ax2.axis('off')
-
-    # Prediction
-    ax3 = fig.add_subplot(1, cols, 3)
-    ax3.imshow(mask, cmap='gray')
-    ax3.set_title("Predicted Mask (k=3)")
-    plt.text(10, mask.shape[0] - 20, metrics_text, color='white', 
-             fontsize=12, bbox=dict(facecolor='black', alpha=0.7))
-    ax3.axis('off')
-
-    # Ground Truth
-    next_plot_idx = 4
-    if gt_mask is not None:
-        ax4 = fig.add_subplot(1, cols, 4)
-        ax4.imshow(gt_mask, cmap='gray')
-        ax4.set_title("Ground Truth")
-        ax4.axis('off')
-        next_plot_idx = 5
-
-    # 3D Scatter
-    ax5 = fig.add_subplot(1, cols, next_plot_idx, projection='3d')
-    rows, c, _ = processed.shape
+    # Downsample pixels for speed
+    rows, cols, _ = processed.shape
     sample_size = 5000
     flat_img = processed.reshape(-1, 3)
-    if rows * c > sample_size: indices = np.random.choice(rows * c, sample_size, replace=False)
-    else: indices = np.arange(rows * c)
-    sample_pixels = flat_img[indices]
-    sample_colors = sample_pixels[:, [2, 1, 0]] / 255.0
+    if rows * cols > sample_size:
+        indices = np.random.choice(rows * cols, sample_size, replace=False)
+    else:
+        indices = np.arange(rows * cols)
     
-    ax5.scatter(sample_pixels[:, 2], sample_pixels[:, 1], sample_pixels[:, 0], 
+    sample_pixels = flat_img[indices]
+    sample_colors = sample_pixels[:, [2, 1, 0]] / 255.0 # BGR to RGB
+    
+    ax3.scatter(sample_pixels[:, 2], sample_pixels[:, 1], sample_pixels[:, 0], 
                   c=sample_colors, marker='.', s=1, alpha=0.3)
+    
+    # Plot Centers
     for i in range(len(centers)):
         center_rgb = centers[i][::-1] / 255.0
         label = "Spit" if i == spit_idx else f"C{i}"
-        ax5.scatter(centers[i][2], centers[i][1], centers[i][0], 
+        ax3.scatter(centers[i][2], centers[i][1], centers[i][0], 
                     c=[center_rgb], marker='X', s=200, edgecolor='black', label=label)
-    ax5.set_title(f"3D Clusters")
-    ax5.legend()
+    
+    ax3.set_xlabel('Red')
+    ax3.set_ylabel('Green')
+    ax3.set_zlabel('Blue')
+    ax3.set_title(f"3D Cluster Cloud")
+    ax3.legend()
+
+    # 4. Prediction
+    plt.subplot(2, 3, 4)
+    plt.imshow(mask, cmap='gray')
+    plt.title(f"Prediction (k={k})")
+    plt.axis('off')
+
+    # 5. Ground Truth
+    if gt_mask is not None:
+        plt.subplot(2, 3, 5)
+        plt.imshow(gt_mask, cmap='gray')
+        plt.title("Ground Truth")
+        plt.axis('off')
 
     plt.tight_layout()
-    plt.show()
+    
+    if save_path:
+        print(f"Saving plot to: {save_path}")
+        plt.savefig(save_path)
+        plt.close(fig) # Close figure to free memory
+    else:
+        plt.show()
 
 def main():
-    DO_CROP = False
-    CROP_COORDS = (200, 600, 200, 600) 
-    BLACKOUT_REGIONS = [] 
-
-    # Generate list for 1.tif to 10.tif
-    # Adjust extension if they are .ARW or .jpg
+    # --- CONFIG ---
     files_to_process = [f'Saliva_Segmentation_dataset/Raw_images/{i}.tif' for i in range(1, 11)]
+    k_experiments = [2, 3, 4, 5]
     
-    all_metrics = []
+    # Set to True to save plots to 'pictures' subfolder
+    SAVE_PLOTS = True 
 
-    print("Starting Batch Process...")
-    for filename in files_to_process:
-        result = process_single_image(filename, (DO_CROP, CROP_COORDS), BLACKOUT_REGIONS)
-        if result:
-            all_metrics.append(result)
+    for k in k_experiments:
+        print(f"\n\n>>> RUNNING EXPERIMENT: K = {k} <<<")
+        all_metrics = []
+        
+        for filename in files_to_process:
+            result = process_single_image(filename, k=k, save_plot=SAVE_PLOTS)
+            if result:
+                all_metrics.append(result)
 
-    # --- PRINT SUMMARY TABLE ---
-    print("\n" + "="*60)
-    print(f"{'IMAGE':<20} | {'ACCURACY':<10} | {'PRECISION':<10} | {'RECALL':<10}")
-    print("-" * 60)
-    
-    acc_sum, prec_sum, rec_sum = 0, 0, 0
-    count = 0
+        # --- PRINT TABLE ---
+        print("\n" + "="*75)
+        print(f"RESULTS FOR K={k}")
+        print("-" * 75)
+        print(f"{'IMAGE':<20} | {'ACCURACY':<10} | {'PRECISION':<10} | {'RECALL':<10} | {'DICE':<10}")
+        print("-" * 75)
+        
+        acc_sum, prec_sum, rec_sum, dice_sum = 0, 0, 0, 0
+        count = 0
 
-    for name, acc, prec, rec in all_metrics:
-        # Only count if GT existed (non-zero stats)
-        # Use a small epsilon check or just check if acc > 0
-        print(f"{name:<20} | {acc:<10.3f} | {prec:<10.3f} | {rec:<10.3f}")
-        if acc > 0:
-            acc_sum += acc
-            prec_sum += prec
-            rec_sum += rec
-            count += 1
-            
-    print("-" * 60)
-    if count > 0:
-        print(f"{'AVERAGE':<20} | {acc_sum/count:<10.3f} | {prec_sum/count:<10.3f} | {rec_sum/count:<10.3f}")
-    print("="*60 + "\n")
+        for name, acc, prec, rec, dice in all_metrics:
+            print(f"{name:<20} | {acc:<10.3f} | {prec:<10.3f} | {rec:<10.3f} | {dice:<10.3f}")
+            if acc > 0:
+                acc_sum += acc
+                prec_sum += prec
+                rec_sum += rec
+                dice_sum += dice
+                count += 1
+                
+        print("-" * 75)
+        if count > 0:
+            print(f"{'AVERAGE':<20} | {acc_sum/count:<10.3f} | {prec_sum/count:<10.3f} | {rec_sum/count:<10.3f} | {dice_sum/count:<10.3f}")
+        print("="*75)
 
 if __name__ == "__main__":
     main()

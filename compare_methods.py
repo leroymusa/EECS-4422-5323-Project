@@ -5,7 +5,7 @@ Generates side-by-side comparison of all segmentation methods.
 
 This script:
 1. Runs Amely's k-means (imports from unsupervised.py)
-2. Runs Leroy's GMM (imports from leroy_gmm.py)
+2. Runs Leroy's GMM (imports from Leroy/leroy_gmm.py)
 3. Runs GrabCut (GMM + Graph Cuts - spatially regularized)
 4. Compares all methods on the same images
 5. Generates a summary table for the report
@@ -22,7 +22,7 @@ from typing import Dict, List, Optional, Tuple
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Import from other modules
-from leroy_gmm import (
+from Leroy.leroy_gmm import (
     load_image, load_ground_truth, preprocess_image,
     fit_gmm_best_of_n, identify_foreground_component,
     gmm_to_probability_map, probability_to_mask, cleanup_mask,

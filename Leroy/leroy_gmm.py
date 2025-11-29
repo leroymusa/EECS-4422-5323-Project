@@ -20,33 +20,66 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import os
+from datetime import datetime
 from sklearn.mixture import GaussianMixture
 from scipy import ndimage
 from typing import Tuple, Optional, List, Dict
 
-try:
-    from amely_unsupervised_work.unsupervised import segment_kmeans_rgb
-    HAS_AMELY_KMEANS = True
-except ImportError:
-    HAS_AMELY_KMEANS = False
+# Import Amely's k-means - handle both package and direct import
+# This is done at module level, but we'll handle errors gracefully
+HAS_AMELY_KMEANS = False
+segment_kmeans_rgb = None
 
-# Image loading - try tifffile first, fallback to matplotlib
+def _init_amely_kmeans():
+    """Initialize Amely's k-means import. Called at module load."""
+    global HAS_AMELY_KMEANS, segment_kmeans_rgb
+    try:
+        # Try package import first (if amely_unsupervised_work is a package)
+        from amely_unsupervised_work.unsupervised import segment_kmeans_rgb
+        HAS_AMELY_KMEANS = True
+    except ImportError:
+        try:
+            # Try direct import (if running from project root)
+            import sys
+            # Go up one level from Leroy/ to project root, then to amely_unsupervised_work
+            project_root = os.path.dirname(os.path.dirname(__file__))
+            amely_path = os.path.join(project_root, 'amely_unsupervised_work')
+            if os.path.exists(amely_path) and amely_path not in sys.path:
+                sys.path.insert(0, amely_path)
+            from unsupervised import segment_kmeans_rgb
+            HAS_AMELY_KMEANS = True
+        except ImportError:
+            HAS_AMELY_KMEANS = False
+            segment_kmeans_rgb = None
+
+# Initialize on module load
+_init_amely_kmeans()
+
+# Image loading - try multiple methods
 try:
     import tifffile
     HAS_TIFFFILE = True
 except ImportError:
     HAS_TIFFFILE = False
 
-# Output directory (root-level so results appear in the repo root as requested)
-PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
-OUTPUT_ROOT = os.path.join(PROJECT_ROOT, 'leroy_gmm_results')
+try:
+    import cv2
+    HAS_OPENCV = True
+except ImportError:
+    HAS_OPENCV = False
+
+# Output directory - results stored in Leroy/leroy_gmm_results/
+# Cross-platform path handling
+PROJECT_ROOT = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))  # Go up to project root
+LEROY_DIR = os.path.dirname(__file__)  # Leroy/ directory
+OUTPUT_ROOT = os.path.join(LEROY_DIR, 'leroy_gmm_results')
 
 # =============================================================================
 # IMAGE LOADING (No OpenCV needed)
 # =============================================================================
 
 def load_image(filepath: str, target_width: int = 800) -> Optional[np.ndarray]:
-    """Load and resize image using matplotlib/tifffile."""
+    """Load and resize image using multiple methods (OpenCV, tifffile, matplotlib)."""
     if not os.path.exists(filepath):
         print(f"Error: File '{filepath}' not found.")
         return None
@@ -54,48 +87,63 @@ def load_image(filepath: str, target_width: int = 800) -> Optional[np.ndarray]:
     file_ext = os.path.splitext(filepath)[1].lower()
     img = None
 
-    try:
-        if file_ext in ['.tif', '.tiff']:
-            if HAS_TIFFFILE:
-                img = tifffile.imread(filepath)
-            else:
-                img = plt.imread(filepath)
-        else:
+    # Try OpenCV first (best for LZW compressed TIFF files)
+    if HAS_OPENCV:
+        try:
+            img = cv2.imread(filepath)
+            if img is not None:
+                # OpenCV loads as BGR, convert to RGB
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        except Exception:
+            pass
+    
+    # Try tifffile if OpenCV failed
+    if img is None and HAS_TIFFFILE and file_ext in ['.tif', '.tiff']:
+        try:
+            img = tifffile.imread(filepath)
+        except Exception:
+            pass
+    
+    # Try matplotlib as last resort
+    if img is None:
+        try:
             img = plt.imread(filepath)
-        
-        # Handle different image formats
-        if img is None:
+        except Exception as e:
+            print(f"Error loading {filepath}: {e}")
             return None
-            
-        # Convert to uint8 if needed
-        if img.dtype == np.float32 or img.dtype == np.float64:
-            if img.max() <= 1.0:
-                img = (img * 255).astype(np.uint8)
-            else:
-                img = img.astype(np.uint8)
-        elif img.dtype == np.uint16:
-            img = (img / 256).astype(np.uint8)
         
-        # Ensure 3 channels (RGB)
-        if len(img.shape) == 2:
-            img = np.stack([img, img, img], axis=-1)
-        elif img.shape[2] == 4:  # RGBA -> RGB
-            img = img[:, :, :3]
-            
-    except Exception as e:
-        print(f"Error loading {filepath}: {e}")
-        return None
-
+    # Handle different image formats
     if img is None:
         return None
+            
+    # Convert to uint8 if needed
+    if img.dtype == np.float32 or img.dtype == np.float64:
+        if img.max() <= 1.0:
+            img = (img * 255).astype(np.uint8)
+        else:
+            img = img.astype(np.uint8)
+    elif img.dtype == np.uint16:
+        img = (img / 256).astype(np.uint8)
+    
+    # Ensure 3 channels (RGB)
+    if len(img.shape) == 2:
+        img = np.stack([img, img, img], axis=-1)
+    elif img.shape[2] == 4:  # RGBA -> RGB
+        img = img[:, :, :3]
 
     # Resize if needed
-    h, w = img.shape[:2]
-    if w > target_width:
-        scale = target_width / w
-        new_h = int(h * scale)
-        # Simple resize using numpy
-        img = resize_image(img, (new_h, target_width))
+    if HAS_OPENCV:
+        h, w = img.shape[:2]
+        if w > target_width:
+            scale = target_width / w
+            new_h = int(h * scale)
+            img = cv2.resize(img, (target_width, new_h), interpolation=cv2.INTER_AREA)
+    else:
+        h, w = img.shape[:2]
+        if w > target_width:
+            scale = target_width / w
+            new_h = int(h * scale)
+            img = resize_image(img, (new_h, target_width))
     
     return img
 
@@ -211,6 +259,7 @@ def fit_gmm_best_of_n(pixels: np.ndarray,
                       n_runs: int = 10,
                       covariance_type: str = 'full',
                       kmeans_centers: Optional[np.ndarray] = None,
+                      kmeans_centers_list: Optional[List[np.ndarray]] = None,
                       verbose: bool = True) -> Tuple[GaussianMixture, float, List[float]]:
     """
     Run GMM fitting multiple times and select the best by log-likelihood.
@@ -219,13 +268,15 @@ def fit_gmm_best_of_n(pixels: np.ndarray,
     "Only guaranteed to converge to local optimum"
     "How do you choose the local optimum? Compute the probability of each 
      solution, and choose the most probable solution."
+    "Try to pass off all k-means solutions to Leroy so he can run in multiple conditions"
     
     Args:
         pixels: N x 3 array of RGB values
         n_components: Number of components
         n_runs: Number of random initializations to try
         covariance_type: Covariance structure
-        kmeans_centers: Optional k-means centers from Amely to use as one initialization
+        kmeans_centers: Optional single k-means centers from Amely (for backward compatibility)
+        kmeans_centers_list: Optional list of k-means solutions from Amely (multiple conditions)
         verbose: Print progress
     
     Returns:
@@ -235,21 +286,38 @@ def fit_gmm_best_of_n(pixels: np.ndarray,
     best_ll = -np.inf
     all_lls = []
     
+    # Collect all k-means initializations
+    kmeans_inits = []
+    if kmeans_centers_list is not None:
+        kmeans_inits.extend([c.astype(np.float64) for c in kmeans_centers_list 
+                            if c is not None and len(c) == n_components])
+    elif kmeans_centers is not None and len(kmeans_centers) == n_components:
+        kmeans_inits.append(kmeans_centers.astype(np.float64))
+    
+    # Use k-means centers for first few runs, then random
+    n_kmeans_inits = len(kmeans_inits)
+    if verbose and n_kmeans_inits > 0:
+        print(f"  Using {n_kmeans_inits} k-means solution(s) from Amely as initialization(s)")
+    
     for i in range(n_runs):
-        # For the first run, use k-means centers if provided
         means_init = None
-        if i == 0 and kmeans_centers is not None:
-            if len(kmeans_centers) == n_components:
-                means_init = kmeans_centers.astype(np.float64)
-                if verbose:
-                    print(f"  Run {i+1}/{n_runs}: Using k-means centers as initialization")
+        
+        # Use k-means centers for initial runs if available
+        if i < n_kmeans_inits:
+            means_init = kmeans_inits[i]
+            if verbose:
+                print(f"  Run {i+1}/{n_runs}: Using Amely's k-means solution #{i+1} as initialization")
+        elif i == n_kmeans_inits and n_kmeans_inits > 0:
+            # After using all k-means, switch to random
+            if verbose:
+                print(f"  Run {i+1}/{n_runs}: Switching to random initialization")
         
         try:
             gmm, ll = fit_gmm_single(
                 pixels, 
                 n_components=n_components,
                 covariance_type=covariance_type,
-                random_state=i * 42,  # Different seed each run
+                random_state=(i + 100) * 42,  # Different seed each run
                 means_init=means_init
             )
             all_lls.append(ll)
@@ -258,9 +326,11 @@ def fit_gmm_best_of_n(pixels: np.ndarray,
                 best_ll = ll
                 best_gmm = gmm
                 if verbose:
-                    print(f"  Run {i+1}/{n_runs}: LL = {ll:.2f} (NEW BEST)")
+                    init_type = f"k-means #{i+1}" if i < n_kmeans_inits else "random"
+                    print(f"  Run {i+1}/{n_runs}: LL = {ll:.2f} (NEW BEST, init: {init_type})")
             elif verbose:
-                print(f"  Run {i+1}/{n_runs}: LL = {ll:.2f}")
+                init_type = f"k-means #{i+1}" if i < n_kmeans_inits else "random"
+                print(f"  Run {i+1}/{n_runs}: LL = {ll:.2f} (init: {init_type})")
                 
         except Exception as e:
             if verbose:
@@ -546,9 +616,11 @@ def segment_image_gmm(filepath: str,
     if original_img is None:
         return None
     
-    # 2. Load ground truth
+    # 2. Load ground truth (cross-platform path handling)
     base_name = os.path.splitext(filepath)[0]
-    base_name_gt = base_name.replace("Raw_images", "Binary_masks")
+    # Handle both forward and backward slashes
+    base_name_gt = base_name.replace("Raw_images", "Binary_masks").replace("\\", os.sep).replace("/", os.sep)
+    # Try .tif first, then .png
     mask_path = base_name_gt + ".tif"
     if not os.path.exists(mask_path):
         mask_path = base_name_gt + ".png"
@@ -566,22 +638,39 @@ def segment_image_gmm(filepath: str,
     if verbose:
         print(f"Fitting GMM (n_components={n_components}, n_runs={n_runs})...")
     
-    init_centers = kmeans_centers
-    if init_centers is None and use_kmeans_seed and HAS_AMELY_KMEANS:
+    # Get k-means solutions from Amely (as Prof suggested: "pass off all k-means solutions")
+    kmeans_centers_list = []
+    if use_kmeans_seed and HAS_AMELY_KMEANS:
         try:
-            _, centers, _ = segment_kmeans_rgb(processed, k=n_components)
-            init_centers = centers.astype(np.float64)
-            if verbose:
-                print("  Using Amely's k-means centers to seed GMM.")
+            # Run k-means multiple times to get different solutions (as Prof suggested)
+            # This gives us multiple k-means initializations to try
+            n_kmeans_runs = min(5, n_runs)  # Get up to 5 k-means solutions
+            for km_run in range(n_kmeans_runs):
+                try:
+                    _, centers, _ = segment_kmeans_rgb(processed, k=n_components)
+                    if centers is not None and len(centers) == n_components:
+                        kmeans_centers_list.append(centers.astype(np.float64))
+                except Exception as e:
+                    if verbose and km_run == 0:
+                        print(f"  K-means run {km_run+1} failed: {e}")
+            
+            if len(kmeans_centers_list) > 0 and verbose:
+                print(f"  Obtained {len(kmeans_centers_list)} k-means solution(s) from Amely's method")
         except Exception as e:
             if verbose:
-                print(f"  K-means seed unavailable: {e}")
+                print(f"  K-means integration unavailable: {e}")
+    
+    # Also accept single k-means center if provided directly
+    single_kmeans = kmeans_centers
+    if single_kmeans is not None and len(single_kmeans) == n_components:
+        if single_kmeans not in kmeans_centers_list:
+            kmeans_centers_list.insert(0, single_kmeans.astype(np.float64))
 
     best_gmm, best_ll, all_lls = fit_gmm_best_of_n(
         pixels,
         n_components=n_components,
         n_runs=n_runs,
-        kmeans_centers=init_centers,
+        kmeans_centers_list=kmeans_centers_list if len(kmeans_centers_list) > 0 else None,
         verbose=verbose
     )
     
@@ -695,6 +784,46 @@ def print_results_table(all_results: List[Dict], n_components: int):
     print("=" * 85)
 
 
+def save_results_to_file(all_results: List[Dict], n_components: int, output_file: str):
+    """
+    Save results to a text file (similar to Amely's results.txt format).
+    
+    Args:
+        all_results: List of result dictionaries
+        n_components: Number of GMM components
+        output_file: Path to output file
+    """
+    with open(output_file, 'a') as f:  # Append mode
+        f.write(f"\n>>> RUNNING EXPERIMENT: n_components = {n_components} <<<\n\n")
+        f.write("=" * 85 + "\n")
+        f.write(f"GMM RESULTS (n_components={n_components})\n")
+        f.write("-" * 85 + "\n")
+        f.write(f"{'IMAGE':<15} | {'ACCURACY':<10} | {'PRECISION':<10} | {'RECALL':<10} | {'DICE':<10} | {'LOG-LIK':<12}\n")
+        f.write("-" * 85 + "\n")
+        
+        acc_sum, prec_sum, rec_sum, dice_sum, ll_sum = 0, 0, 0, 0, 0
+        count = 0
+        
+        for result in all_results:
+            m = result['metrics']
+            f.write(f"{m['filename']:<15} | {m['accuracy']:<10.3f} | {m['precision']:<10.3f} | "
+                   f"{m['recall']:<10.3f} | {m['dice']:<10.3f} | {m['log_likelihood']:<12.0f}\n")
+            
+            if m['accuracy'] > 0:
+                acc_sum += m['accuracy']
+                prec_sum += m['precision']
+                rec_sum += m['recall']
+                dice_sum += m['dice']
+                ll_sum += m['log_likelihood']
+                count += 1
+        
+        f.write("-" * 85 + "\n")
+        if count > 0:
+            f.write(f"{'AVERAGE':<15} | {acc_sum/count:<10.3f} | {prec_sum/count:<10.3f} | "
+                   f"{rec_sum/count:<10.3f} | {dice_sum/count:<10.3f} | {ll_sum/count:<12.0f}\n")
+        f.write("=" * 85 + "\n\n")
+
+
 def main():
     """
     Main experiment: Run GMM segmentation on all images with different configs.
@@ -704,14 +833,39 @@ def main():
     - Run multiple initializations
     - Select best by pseudo-log-likelihood
     - Report metrics per condition
+    - Save results to text file (like Amely's results.txt)
     """
     # --- CONFIG ---
-    files_to_process = [f'Saliva_Segmentation_dataset/Raw_images/{i}.tif' for i in range(1, 11)]
-    component_experiments = [3, 4]  # Try 3 and 4 components
+    # Cross-platform path handling
+    dataset_root = os.path.join(PROJECT_ROOT, 'Saliva_Segmentation_dataset', 'Raw_images')
+    files_to_process = [os.path.join(dataset_root, f'{i}.tif') for i in range(1, 11)]
+    
+    # Based on Amely's results:
+    # - K=3: Dice = 0.544 (first good result)
+    # - K=4: Dice = 0.601 (best balanced: good precision 0.569, recall 0.817)
+    # - K=5: Dice = 0.627 but recall drops to 0.713 (too low)
+    # Best comparison: 3 vs 4 to show improvement from first good to best balanced
+    component_experiments = [3, 4]  # Matching Amely's best performing k values
     n_runs = 10  # Number of GMM initializations per image
     
     SAVE_PLOTS = True
     VERBOSE = True
+    
+    # Results file path
+    results_file = os.path.join(LEROY_DIR, 'results.txt')
+    
+    # Initialize results file with header
+    with open(results_file, 'w') as f:
+        f.write("LEROY'S GMM SEGMENTATION RESULTS\n")
+        f.write("=" * 85 + "\n")
+        f.write(f"Date: {datetime.now().strftime('%B %d, %Y')}\n")
+        f.write("\nFollowing Prof's office hour notes:\n")
+        f.write("  - Fit GMM on pixel colors\n")
+        f.write("  - Run multiple initializations (n_runs=10)\n")
+        f.write("  - Use pseudo-log-likelihood to select best model\n")
+        f.write("  - Get P(foreground | pixel) probabilities\n")
+        f.write("  - Integrate with Amely's k-means for initialization\n")
+        f.write("=" * 85 + "\n\n")
     
     print("\n" + "=" * 85)
     print("LEROY'S GMM SEGMENTATION PIPELINE")
@@ -725,6 +879,7 @@ def main():
     print(f"Images: {len(files_to_process)}")
     print(f"Component configs: {component_experiments}")
     print(f"GMM runs per image: {n_runs}")
+    print(f"Results will be saved to: {results_file}")
     print("=" * 85)
     
     for n_components in component_experiments:
@@ -746,9 +901,13 @@ def main():
         
         # Print summary table
         print_results_table(all_results, n_components)
+        
+        # Save to file
+        save_results_to_file(all_results, n_components, results_file)
     
     print("\n\nExperiment complete!")
     print(f"Results saved to: {OUTPUT_ROOT}")
+    print(f"Results text file: {results_file}")
 
 
 if __name__ == "__main__":

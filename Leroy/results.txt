@@ -1,0 +1,12 @@
+LEROY'S GMM SEGMENTATION RESULTS
+=====================================================================================
+Date: November 28, 2025
+
+Following Prof's office hour notes:
+  - Fit GMM on pixel colors
+  - Run multiple initializations (n_runs=10)
+  - Use pseudo-log-likelihood to select best model
+  - Get P(foreground | pixel) probabilities
+  - Integrate with Amely's k-means for initialization
+=====================================================================================
+

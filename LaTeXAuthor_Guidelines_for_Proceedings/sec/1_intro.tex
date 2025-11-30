@@ -1,0 +1,17 @@
+\section{Introduction}
+
+Hospital environments are vulnerable to pathogen transmission when saliva, which spreads easily between patients and staff, settles on shared surfaces. Under UV-C illumination these deposits glow brightly, but the dataset for segmentation is limited: ten color images spanning aluminum, steel, white wood, PVC, and wood, with only four ground-truth saliva masks per image. Thus the problem is best addressed with unsupervised segmentation that can tolerate uneven illumination, heterogeneous substrates, and tight recall requirements rather than rely on large labeled datasets.
+
+\subsection{Problem definition}
+
+We formulate saliva segmentation as recovering centralized bright regions that correspond to contamination while ignoring darker materials. The small size of the dataset and the limited ground truth make supervised training unfeasible, so the methods must rely on image statistics and simple heuristics to propose saliva masks that can be validated against the provided masks.
+
+\subsection{Contributions}
+
+In this work we deliver:
+\begin{itemize}
+    \item A structured comparison of the existing MATLAB/thresholding pipeline (Method A), the exploratory k-means clustering pipeline (Method C), and the probabilistic Gaussian mixture model pipeline (Method D).
+    \item A GMM workflow that seeds EM with k-means centers, runs ten initializations per image, selects the best solution via pseudo-log-likelihood, and thresholds the resulting probability map before morphological cleanup.
+    \item Empirical evidence that the \(K=4\) GMM increases Dice while keeping recall above \(0.96\), illustrating how likelihood-aware model selection improves the unsupervised segmentation of saliva under UV-C.
+\end{itemize}
+

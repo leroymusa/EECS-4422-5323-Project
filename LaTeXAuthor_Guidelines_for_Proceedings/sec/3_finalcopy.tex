@@ -1,0 +1,29 @@
+\section{Results and discussion}
+
+Table~\ref{tab:method-comparison} summarizes per-method averages for accuracy, precision, recall, Dice, and the pseudo-log-likelihood (PLL) that Method D uses to select the best EM run. Method C maintains a high precision at \(K=3\), but the GMM keeps recall above \(0.96\) even when precision drops; switching to \(K=4\) raises Dice and improves the PLL, signaling a better probabilistic fit.
+
+\begin{table}[t]
+  \centering
+  \resizebox{\linewidth}{!}{%
+  \begin{tabular}{@{}lcccccc@{}}
+    \toprule
+    Method & \(K\) & Accuracy & Precision & Recall & Dice & \(\text{PLL}~(10^6)\) \\
+    \midrule
+    Method C (k-means, no preprocessing) & 3 & 0.927 & 0.444 & 0.925 & 0.544 & -- \\
+    Method D (GMM) & 3 & 0.930 & 0.282 & 0.992 & 0.432 & -2.92 \\
+    Method D (GMM) & 4 & 0.959 & 0.419 & 0.964 & 0.564 & -2.77 \\
+    \bottomrule
+  \end{tabular}%
+  }
+  \caption{Cross-method comparison of segmentation metrics. The GMM keeps recall high and the \(K=4\) solution improves Dice while increasing PLL relative to \(K=3\).}
+  \label{tab:method-comparison}
+\end{table}
+
+The probabilistic GMM absorbs bright saliva pixels that the hard clusters sometimes treat as background, yielding near-perfect recall at \(K=3\). The addition of a fourth component, selected by the highest PLL over ten EM runs (some seeded by k-means centers, some random), regains precision and raises Dice while still delivering high recall. This likelihood-guided selection, reinforced by the probability maps and morphological cleanup, provides both the segmentation masks and the log-likelihood measurements that describe the fit quality of each run.
+
+We will append runtime and memory profiling numbers once they are collected on the target hardware so the paper reports both segmentation performance and computational cost. For now, the emphasis is on demonstrating that Method D produces reliable masks under UV-C illumination despite the low-data regime.
+
+\section{Conclusion}
+
+This report documents an unsupervised saliva segmentation workflow: Method A’s MATLAB thresholding, Method C’s k-means clustering, and Method D’s likelihood-aware Gaussian mixture model. Method D keeps recall high and, at \(K=4\), raises Dice while using pseudo-log-likelihood to select the most probable model, demonstrating that probabilistic modeling and multi-start EM produce stable masks in this safety-critical, low-data setting.
+

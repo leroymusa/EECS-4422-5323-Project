@@ -1,0 +1,23 @@
+\section{Dataset and Methods}
+
+\subsection{Dataset description}
+
+The dataset contains ten UV-C images collected over five substrates (aluminum, steel, white wood, PVC, and wood) along with binary ground-truth masks that highlight four roughly centralized saliva patches per frame. The first eight images serve as the tuning set while the remaining two are held out for testing. Because the masks do not cover the entire surface area and the total number of frames is small, every method must operate in an unsupervised fashion and rely on strong assumptions about color, intensity, and spatial locality.
+
+\subsection{Method A: MATLAB thresholding pipeline}
+
+Method A is a lightweight computer-vision pipeline built in MATLAB. Each RGB image is first converted to luminance using ITU-R BT.601 weights; then Contrast Limited Adaptive Histogram Equalization (CLAHE) compensates for uneven lighting. We apply Otsu's threshold with a learned bias factor that shifts the threshold to include more saliva when the raw threshold underestimates the foreground. Plausibility filters remove regions whose area is either too small (noise) or too large (non-saliva), and we reward regions that lie near the geometric center of the annotated patches. A final morphological cleanup (opening followed by closing) removes tiny speckles and fills holes created by the hard binarization.
+
+\subsection{Method B: placeholder}
+
+Method B was reserved for future work and is not implemented in this draft. The focus remains on documenting Methods A and C and on expanding the probabilistic mixture model described in Method D.
+
+\subsection{Method C: exploratory k-means}
+
+Method C runs k-means on the RGB pixels with \(K = 3, 4, 5\) components. Each run is repeated multiple times (typically ten starts) and the best run is selected via the compactness metric (within-cluster sum of squares). We compare the luminance of each center (\(0.114B + 0.587G + 0.299R\)) and label the brightest one as saliva. Every pixel assigned to that center becomes foreground, and morphological opening/closing removes small artifacts while filling interior gaps. No preprocessing beyond the raw RGB conversion is needed because the UV-C illumination already maximizes contrast between saliva and background.
+
+\subsection{Method D: probabilistic Gaussian mixture model}
+
+Method D treats each pixel \((R, G, B)\) as a sample from a Gaussian mixture. We fix \(K \in \{3, 4\}\) to match the promising cluster sizes discovered by Method C and fit a full-covariance \(\Sigma_k\) GMM using \(\texttt{sklearn.mixture.GaussianMixture}\). Because the EM algorithm only converges to a local optimum, the pipeline runs \(n_{\text{runs}} = 10\) independent fits per image. The first few runs are seeded with k-means centers collected from Method C, while later runs use random initializations to cover diverse basins of attraction. Each run reports a pseudo-log-likelihood \(\sum_i \log p(\mathbf{x}_i \mid \Theta)\) evaluated on the training data, and we keep the model with the highest likelihood as the most probable solution.
+
+The selected model produces posterior probabilities \(P(z_i = k \mid \mathbf{x}_i, \Theta^*)\). We identify the saliva component as the one with the highest luminance and extract \(P_{\text{fg}}(\mathbf{x}_i)\). Thresholding this probability map at 0.5 yields a raw binary mask, which is then cleaned via morphological opening and closing to eliminate small false positives and fill holes. These masks are evaluated against the ground truth with accuracy, precision, recall, and Dice so that the results section can compare the methods on common metrics.

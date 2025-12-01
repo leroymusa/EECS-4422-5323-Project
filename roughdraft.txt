@@ -1,0 +1,290 @@
+Rough draft EECS 5323/4422
+Team 2 – Image Segmentation
+1. Introduction[a]
+1.1 Problem Definition
+Hospital-acquired infections (HAIs) pose a recurring threat to healthcare environments, increasing patient risk, complicating workflows, and incurring higher operational costs. HAIs spread by direct contact, droplets, aerosols, and contaminated surfaces. The problem is further harmful in busy clinical areas, where equipment is moved frequently, and patients are vulnerable. Major reviews and guidelines identify environmental reservoirs, device-related contamination, and workflow pressures as the primary factors contributing to disease propagation in hospitals, suggesting that broad infection-control policies alone are insufficient. Additionally, knowing where contamination actually accumulates is crucial, allowing for focused and effective cleaning [1]–[5].
+Saliva is a common target for efforts aimed at reducing HAIs because it carries many pathogens and is easily spread during talking, coughing, and routine procedures. Once saliva lands on instruments or surfaces, its appearance changes as it dries or interacts with different materials, making it difficult to spot under normal lighting. Studies using fluorescence reveal clear differences between moist and dried saliva on various surfaces, indicating that optical imaging can detect deposits that would otherwise be missed [6]. Other reviews and studies that treat saliva as a diagnostic and surveillance fluid also highlight its role in pathogen carriage and transmission, reinforcing the idea that detecting saliva specifically is a useful way to reduce HAIs [7]–[9].
+In practice, hospitals employ a layered approach to prevention, utilizing masks, face shields, and routine cleaning and sterilization. Masks and shields reduce the spread of droplets but do not eliminate surface deposition. Experiments that use fluorescent surrogates often reveal contamination patterns invisible to the naked eye, demonstrating that barriers and cleaning must work together [10]. Mask effectiveness depends on fit, material, and how long it is worn. Leaks and saturation can still let droplets escape and contaminate nearby surfaces [11]. Face shields block splashes and large droplets but do not prevent peripheral deposition, and the shield surfaces themselves can become contaminated. Therefore, they are most effective when used in conjunction with masks [10], [11]. Routine disinfection lowers surface bioburden, but actual coverage and contact time vary in real settings. Laser-induced fluorescence (LIF) can map where droplets land and persist, providing useful feedback to improve cleaning patterns and identify missed spots [12].
+Computer vision can make these imaging findings actionable. Segmentation algorithms can produce binary masks that mark saliva or fluorescent surrogates in images. These masks can guide automated or semi‑automated cleaning tools to focus on contaminated regions. Fluorescence imaging and high-speed visualization provide the contrast and ground truth necessary to train and validate these algorithms across various surface types and moisture states, helping bridge the gap between lab measurements and real-world cleaning workflows [6], [11], [10], [12]. 
+
+
+
+
+1.2 Literature Review[b]
+
+
+Medical image segmentation is the area of medical technology that most resembles the creation of binary masks for saliva recognition. This process labels every pixel (or voxel) in an image to isolate organs, lesions, fluids, usually by difference in contrast. For contamination detection this usually boils down to a binary mask (contaminant vs. background), but the goals are the same as other clinical tasks: get accurate boundaries, be robust to different imaging conditions, and produce outputs that can drive decisions or automated actions. Standard overlap metrics such as the Dice Coefficient and Intersection over Union (IoU) are used to judge how well a model matches expert masks, called Ground Truths (GT). These metrics guide model selection and tuning [13].
+The methods for segmentation range from image‑processing techniques to deep neural networks. Basic steps, such as contrast enhancement, thresholding, edge filters (Sobel/Laplace), and morphological cleanup, are still used for boosting visibility of small or low‑contrast deposits, as well as for preprocessing images before applying the model [13], [14]. On the learning side, U‑Net and its many variants are the baseline because they combine multi‑scale context with precise localization. More recent work adds attention blocks or mixes CNNs with transformers to capture longer‑range context and improve small‑object detection [15], [16]. There’s also a growing push to use synthetic data and generative models to expand training sets, and public codebases for droplet tasks (e.g., Droplet‑ML) make it easier to reproduce experiments and try augmentation strategies [17], [18].
+The main challenges for saliva/droplet segmentation are familiar in the computer vision field. Getting enough labeled masks is expensive, droplets are tiny so class imbalance is severe, and appearance changes a lot with surface type, lighting, and drying state. That means the necessity of specialized datasets, multi‑scale supervision, and careful preprocessing or domain‑adaptation to generalize from lab images to real clinical scenes [15], [16]. Practically speaking, the best routes adopt a hybrid approach, using classical enhancement to make deposits visible [13], training robust segmentation networks (with attention to small‑object handling) [15], and relying on synthetic or open datasets to fill gaps [17], [18].
+
+
+
+
+
+
+
+
+
+
+
+
+1.3 Contributions [c]
+2. Method
+2.1 Dataset Description[d]
+* 10 UV-C images from saliva over different substrates, both wet and dry.
+* Substrates: Aluminum, Steel, Whitewood, PVC and Wood.
+* 10 Ground Truth images representing binary masks already done on this set.
+* All Ground Truth images carry 4 foreground regions roughly centralized
+* When using machine learning methods, the first 8 images were considered part of the Training Set, and the remaining 2 images composed the Test Set.
+2.2 Methods used[e]
+Method A
+        Method A is based on MATLAB and its computer vision libraries. The idea behind this method is to create a binary mask that identifies saliva spots with high recall, using a simple and fast technique that utilizes resources already present in MATLAB. This method will convert the images to grayscale, enhance their contrast, train a model to create binary masks, and apply what it has learned to the test set.
+
+
+Pre-processing
+                        Luminance conversion
+        The raw images, heavily red due to the UV-C setting, were imported to MATLAB and converted to luminance (black and white). The recommended ITU-R BT.601 weights to each colour channel (0.299*Red, 0.587*Green and 0.114*Blue) were applied, yielding a visually correct grayscale image (Figure 2a and 2b).
+                        CLAHE
+        After this conversion, the images were treated with Contrast Limited Adaptive Histogram Equalization (CLAHE) to enhance their contrast and facilitate the identification of a suitable luminance threshold (Figure 2c). This method was used to obtain a locally optimized histogram equalization, while avoiding noise amplification.
+Ground Truth evaluation
+        After treating the input image, the code turns to the corresponding ground truth file. It performs an analysis of the number of white pixels the ground truth possesses and divides this quantity by the number of white areas to obtain a plausible area range to search for when segmenting the input image. This step helps filter out elements with similar luminances but that are either more than 50% too small (noise) or too large (other image objects).
+                Training
+                        Otsu bias tuning
+        Otsu’s thresholding technique automatically classifies pixels in a luminance image as foreground (white) or background (black) depending on a threshold. Its mathematical formulation calculates the threshold that better minimizes the intra-class variance between the pixels in each class (Figure 2d). Although it is a great method for images that generate a bimodal histogram (as those present in the dataset), it can suffer from sources with uneven lighting and end up underestimating the foreground pixels. To compensate for this effect, Method A employs a set of optimizations to produce masks that more accurately recreate the ground truth. The first one involves training a bias factor to be combined with the original threshold. This bias (Formula 1) lowers or increases Otsu’s threshold, resulting in more or fewer white pixels in the binary mask. A series of sweeps of values, ever reducing the search range, was performed to find the optimal bias.
+ (1)
+After this phase, a plausibility filter is used to maintain on the binary mask only the regions that have a plausible area as the saliva patches, and are roughly centralized. Their distance from the geometric center of the four ground truth saliva patches is measured, and closer regions are rewarded. After this filtering, the bias that maximizes the Dice Similarity Coefficient (DICE) between all binary masks from the training set and their respective ground truths is chosen. The DICE coefficient was chosen to combine precision and recall into a single, simple, and comparable measurement across methods.
+                Testing
+        With a defined threshold bias (Figure 3), images 9 and 10 were processed without reference to the ground truth, only being compared to it at the end to generate the precision/recall results. Otsu’s thresholding was applied, and the same two post-processing filters were adopted. The first step filtered out areas with a small pixel count to remove random noise and large areas that would not yield a feasible result for the binary mask (Figure 2e). The second filter is similar to the centrality logic applied during training, but since the ground truth images could not be consulted, centrality was measured from the center of the image. To finalize the mask, a Close operation (Erosion + Dilation) was performed to eliminate small gaps in the generated white areas (Figure 2f). The generated binary mask was then compared to the ground truth (Figure 2g) for performance evaluation.
+
+
+  
+[f][g][h]
+Figure 2 - Step by step image processes done by Method A on the test images
+          
+Figure 3 - Bias parameter selected as -0.18, meaning that the selected threshold was more permissive and normal
+Method B
+Method C
+Method C looks at using k-means to distinguish between saliva pixels and background pixels. 
+Pre-processing 
+* Did not pre-process images with Gaussian/Median due to an improvement with no pre-processing 
+* All tables below are with k=3 
+* Below table: With pre-processing 
+Image
+	Accuracy
+	Precision
+	Recall
+	DICE Score
+	1.tif
+	0.996
+	0.911
+	0.899
+	0.905
+	2.tif
+	0.838
+	0.089
+	0.821
+	0.161
+	3.tif
+	0.990
+	0.796
+	0.950
+	0.866
+	4.tif
+	0.959
+	0.428
+	0.896
+	0.579
+	5.tif
+	0.813
+	0.094
+	0.994
+	0.172
+	6.tif
+	0.778
+	0.104
+	0.984
+	0.188
+	7.tif
+	0.987
+	0.670
+	0.920
+	0.775
+	8.tif
+	0.947
+	0.377
+	0.979
+	0.544
+	9.tif
+	0.980
+	0.549
+	0.989
+	0.706
+	10.tif
+	0.962
+	0.352
+	0.833
+	0.495
+	AVERAGE
+	0.925
+	0.437
+	0.926
+	0.539
+	
+
+* Below table: Without pre-processing (better result) 
+Image
+	Accuracy
+	Precision
+	Recall
+	DICE Score
+	1.tif
+	0.997
+	0.937
+	0.896
+	0.916
+	2.tif
+	0.844
+	0.092
+	0.820
+	0.165
+	3.tif
+	0.990
+	0.813
+	0.949
+	0.876
+	4.tif
+	0.960
+	0.432
+	0.895
+	0.583
+	5.tif
+	0.818
+	0.096
+	0.995
+	0.175
+	6.tif
+	0.779
+	0.105
+	0.985
+	0.190
+	7.tif
+	0.987
+	0.671
+	0.923
+	0.777
+	8.tif
+	0.949
+	0.387
+	0.977
+	0.554
+	9.tif
+	0.981
+	0.552
+	0.989
+	0.709
+	10.tif
+	0.963
+	0.358
+	0.820
+	0.498
+	AVERAGE
+	0.927
+	0.444
+	0.925
+	0.544
+	
+
+K-means 
+* Every pixel has RGB value 
+* K-means is run 10 times, best result is kept 
+   * Best result determined through ‘compactness’ metric - whichever cluster is smallest 
+* Centre of each cluster is found 
+   * To determine which cluster is spit, perceived luminance is used to compare brightness! 
+      * 0.114*Blue + 0.587*Green + 0.299*Red
+   * Brightest centre belongs to spit cluster 
+* Then, all pixels belonging to the spit cluster in the original image are assigned a value of 255, all other values get 0 (creates mask) 
+Post-processing 
+* Morphological filters (close, open) to remove small white spots and small dark spots 
+Discussion 
+* K-means cluster 2, 3, 4, 5 were tested 
+   * 2 performs worst at precision 
+   * 3 is a good balance 
+   * 4 is also a good balance, but starts to lose recall 
+   * 5 loses too much recall 
+Method D
+Method D builds a Gaussian Mixture Model (GMM) in RGB space to separate saliva from background. Each pixel (R,G,B) is treated as a sample from a mixture of K Gaussians, with K = 3 or 4 matching the most competitive clusterings from Method C. The EM algorithm (via sklearn.mixture.GaussianMixture) is run multiple times per image, so that different initializations and the extra components can be evaluated by likelihood rather than by a single hard assignment.
+Pre-processing
+* Pixels remain in RGB space, and the images are reshaped into long pixel arrays so the GMM learns color distributions directly.
+* Cluster centers extracted from the k-means pipeline provide candidate initial means, ensuring the probabilistic model starts near plausible saliva/background separations.
+* No additional smoothing or filtering is applied prior to fitting, keeping the preprocessing comparable to the other methods.
+Training and model selection
+* For each image and each value of K, n_runs = 10 independent GMM fits are executed. The first few runs are seeded with k-means centers, while later runs use random seeds to explore other local optima.
+* Each run produces a pseudo-log-likelihood equal to the sum over all pixels of log p(x_i | Theta) on the training data. The model with the highest pseudo-log-likelihood is chosen, following the strategy to “select the most probable solution” when EM only guarantees convergence to a local maximum.
+* Posterior probabilities P(z_i = k | x_i, Theta*) are used to create a foreground probability map. The brightest component (luminance 0.299 R + 0.587 G + 0.114 B) is designated as saliva.
+Mask construction and evaluation
+* The foreground probability map is thresholded at 0.5 and then subjected to morphological opening and closing to remove noise and fill small holes.
+* The resulting mask is evaluated against the ground truth using accuracy, precision, recall, and Dice. Per-image metrics and pseudo-log-likelihoods are tracked for the report, and visualizations are exported for reference.
+This GMM procedure turns the hard k-means clusters from Method C into a soft segmentation model, quantifies uncertainty with posterior probabilities, and makes model selection explicit through pseudo-log-likelihood comparisons.
+
+
+3. Results[i]
+Cross-comparison of precision/recall
+
+
+
+
+
+
+4. Discussion
+
+
+5. Conclusion[j]
+
+
+
+
+6. References
+
+
+[1] B. Allegranzi and D. Pittet, “Role of hand hygiene in healthcare-associated infection prevention,” Journal of Hospital Infection, vol. 77, no. 4, pp. 305–315, 2011. DOI: 10.1016/j.jhin.2009.04.019
+[2] H. P. Loveday, J. A. Wilson, R. J. Pratt, et al., “epic3: National evidence-based guidelines for preventing healthcare-associated infections in NHS hospitals in England,” Journal of Hospital Infection, vol. 86, Suppl. 1, pp. S1–S70, 2014. DOI: 10.1016/S0195-6701(13)60012-2
+[3] J. A. Otter, S. Yezli, J. A. G. Salkeld, and G. L. French, “Evidence that contaminated surfaces contribute to the transmission of hospital pathogens and an overview of strategies to address contaminated surfaces in hospital settings,” American Journal of Infection Control, vol. 44, no. 5, pp. S6–S11, 2013. DOI: 10.1016/j.ajic.2012.12.004
+[4] D. J. Weber and W. A. Rutala, “Understanding and preventing transmission of healthcare-associated pathogens due to the contaminated hospital environment,” Infection Control & Hospital Epidemiology, vol. 34, no. 5, pp. 449–452, 2013. DOI: 10.1086/670223
+[5] S. S. Magill, J. R. Edwards, W. Bamberg, et al., “Multistate point-prevalence survey of health care–associated infections,” New England Journal of Medicine, vol. 370, no. 13, pp. 1198–1208, 2014. DOI: 10.1056/NEJMoa1306801
+[6] G. E. Miranda, J. M. Campos, and R. Pérez, “Analysis of the fluorescence of body fluids on different surfaces for forensic applications,” Science & Justice, vol. 54, pp.427–431, 2014. DOI: 10.1016/j.scijus.2014.10.002
+[7] D. Malamud, “Saliva as a diagnostic fluid,” Dental Clinics of North America, vol. 55, no. 1, pp. 159–178, 2011. DOI: 10.1016/j.cden.2010.08.004
+[8] K. K.-W. To, O. T.-Y. Tsang, C. C.-Y. Yip, et al., “Consistent detection of 2019 Novel Coronavirus in saliva,” Clinical Infectious Diseases, vol. 71, no. 15, pp. 841–843, 2020. DOI: 10.1093/cid/ciaa149
+[9] N. F. de Oliveira Neto, et al., “The Emergence of Saliva as a Diagnostic and Prognostic Tool for Viral Infections,” Viruses, vol. 16, no. 11, p. 1759, 2024. DOI: 10.3390/v16111759
+[10] S. H. Shah, et al, “Assessment of Respiratory Droplet Transmission During the Ophthalmic Slit-Lamp Exam: A Particle Tracking Analysis,” Am J Ophthalmol, vol. 222, pp. 76-81, 2021. DOI: 10.1016/j.ajo.2020.08.046
+[11] B. Chang, R. J. Boltryk, Y. Amarouchene, and D. K. Dysthe, “Aerial mucosalivary droplet dispersal distributions with implications for disease mitigation,” Physical Review Research, vol. 2, no. 4, p. 043391, 2020. DOI: 10.1103/PhysRevResearch.2.043391
+[12] F. Wu, B. Zhang, J. Wu, R. Jia, and D. Sun, “Quantitative measurement and application of droplets on physical surfaces based on LIF technology” Transportation Safety and Environment, vol. 6, no. 2, p. tdad030, 2024. DOI: 10.1093/tse/tdad030
+[13] X. Ren and S. Lai, “Medical Image Enhancement Based on Laplace Transform, Sobel Operator and Histogram Equalization,” Academic Journal of Computing & Information Science, vol. 5, no. 6, 2022. DOI: 10.25236/ajcis.2022.050608.
+[14] C.-X. Deng, W. Ma, and Y. Yin, “An edge detection approach of image fusion based on improved Sobel operator,” 2011 4th International Congress on Image and Signal Processing, Oct. 2011. DOI: 10.1109/cisp.2011.6100499.
+[15] T. Rahman et al., “Exploring the effect of image enhancement techniques on COVID-19 detection using chest X-ray images,” Computers in Biology and Medicine, vol. 132, p. 104319, May 2021. DOI: 10.1016/j.compbiomed.2021.104319.
+[16] A. Dwivedi, S. Joshi, R. Kumar, V. Rai, V. Chaudhary, and P. K. Mishra, “Optimizing Diagnosis Approaches: A Computational Perspective for Medical Image Processing in Cholangiocarcinoma Detection,” Archives of Computational Methods in Engineering, Sep. 2025. DOI: 10.1007/s11831-025-10339-z.
+[17] T.-H. Pham and K.-D. Nguyen, “Enhanced Droplet Analysis Using Generative Adversarial Networks,” Computer Vision and Pattern Recognition - Cornell University, Feb. 2024. DOI: 10.48550/arxiv.2402.15909.
+[18] A. Sarritzu et al., “droplet-ml,” GitHub repository. Available: https://github.com/alesarritz/droplet-ml.
+
+
+[a]What is the problem you are trying to solve?
+Why is this problem interesting/important?
+[b]What has been done in the prior literature to try to solve this problem?
+What are current limitations of these methods?
+Will your study potentially address any of these limitations? If so, how?
+[c]What specifically do you hope your study will contribute to the literature.
+What is the division of labour for your team. Explicitly identify the responsibilities of each team member.
+[d]What datasets will you use to train and quantitatively test your approach and compare against other approaches?
+[e]Describe your algorithm/system in detail.
+Be careful to clearly identify any source code or high-level MATLAB, OpenCV, Python functions you employ
+Be careful to clearly identify source code you have written yourself and submit this with your report.
+[f]Hey @felipe.mateus.franco@gmail.com 
+
+
+Where did you say you kept the High quality images?
+_Assigned to felipe.mateus.franco@gmail.com_
+[g]Both here: https://drive.google.com/drive/folders/13M-0Tn5HxS8xVst2QghGdxarAXrClYyq
+[h]Thank you!
+[i]Compare qualitative and quantitative results of the systems you are evaluating.
+Report the run time (on specified hardware) and memory requirements of the systems you are evaluating
+[j]What are the main things you discovered in this project?
+What would you do in future work to extend the project?

@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  30 NOV 2025 11:15
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  1 DEC 2025 03:41
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -540,15 +540,10 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
 (./sec/0_abstract.tex) (./sec/1_intro.tex
 
-LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 1
-3.
-(/usr/local/texlive/2025/texmf-dist/tex/latex/psnfss/ts1ptm.fd
-File: ts1ptm.fd 2001/06/04 font definitions for TS1/ptm.
-))
-(./sec/2_formatting.tex
+
 
 LaTeX Font Info:    Trying to load font information for OT1+phv on input line 1
-0.
+2.
 (/usr/local/texlive/2025/texmf-dist/tex/latex/psnfss/ot1phv.fd
 File: ot1phv.fd 2020/03/25 scalable font definitions for OT1/phv.
 ) [1{/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr
@@ -556,13 +551,106 @@ File: ot1phv.fd 2020/03/25 scalable font definitions for OT1/phv.
 
 
 ]
-LaTeX Font Info:    Trying to load font information for OT1+pcr on input line 2
-1.
+
+Package natbib Warning: Citation `ren2022medical' on page 2 undefined on input 
+line 15.
+
+
+Package natbib Warning: Citation `ren2022medical' on page 2 undefined on input 
+line 17.
+
+
+Package natbib Warning: Citation `deng2011edge' on page 2 undefined on input li
+ne 17.
+
+
+Package natbib Warning: Citation `rahman2021exploring' on page 2 undefined on i
+nput line 17.
+
+
+Package natbib Warning: Citation `dwivedi2025optimizing' on page 2 undefined on
+ input line 17.
+
+
+Package natbib Warning: Citation `pham2024enhanced' on page 2 undefined on inpu
+t line 17.
+
+
+Package natbib Warning: Citation `sarritzu2024dropletml' on page 2 undefined on
+ input line 17.
+
+
+Package natbib Warning: Citation `rahman2021exploring' on page 2 undefined on i
+nput line 19.
+
+
+Package natbib Warning: Citation `dwivedi2025optimizing' on page 2 undefined on
+ input line 19.
+
+
+Package natbib Warning: Citation `ren2022medical' on page 2 undefined on input 
+line 19.
+
+
+Package natbib Warning: Citation `dwivedi2025optimizing' on page 2 undefined on
+ input line 19.
+
+
+Package natbib Warning: Citation `pham2024enhanced' on page 2 undefined on inpu
+t line 19.
+
+
+Package natbib Warning: Citation `sarritzu2024dropletml' on page 2 undefined on
+ input line 19.
+
+LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 2
+5.
+(/usr/local/texlive/2025/texmf-dist/tex/latex/psnfss/ts1ptm.fd
+File: ts1ptm.fd 2001/06/04 font definitions for TS1/ptm.
+)
+
+) (./sec/2_formatting.tex
+
+[2]
+<../Felipe/Image Method A.png, id=140, 758.835pt x 1517.67pt>
+File: ../Felipe/Image Method A.png Graphic file (type png)
+<use ../Felipe/Image Method A.png>
+Package pdftex.def Info: ../Felipe/Image Method A.png  used on input line 37.
+(pdftex.def)             Requested size: 237.13594pt x 474.2707pt.
+<../Felipe/0_Bias_Tuning_Curve.png, id=142, 422.0568pt x 253.9086pt>
+File: ../Felipe/0_Bias_Tuning_Curve.png Graphic file (type png)
+<use ../Felipe/0_Bias_Tuning_Curve.png>
+Package pdftex.def Info: ../Felipe/0_Bias_Tuning_Curve.png  used on input line 
+46.
+(pdftex.def)             Requested size: 237.13594pt x 142.6605pt.
+
+
+
+
+[3 <../Felipe/Image Method A.png>]
+LaTeX Font Info:    Trying to load font information for OT1+pcr on input line 1
+11.
 
 (/usr/local/texlive/2025/texmf-dist/tex/latex/psnfss/ot1pcr.fd
 File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
-))
-(./sec/3_finalcopy.tex
+)
+
+) (./sec/3_finalcopy.tex
+
+[4 <../Felipe/0_Bias_Tuning_Curve.png (PNG copy)>]
+<../Leroy/leroy_gmm_results/1_gmm_n3.png, id=174, 1304.2326pt x 837.3684pt>
+File: ../Leroy/leroy_gmm_results/1_gmm_n3.png Graphic file (type png)
+<use ../Leroy/leroy_gmm_results/1_gmm_n3.png>
+Package pdftex.def Info: ../Leroy/leroy_gmm_results/1_gmm_n3.png  used on input
+ line 32.
+(pdftex.def)             Requested size: 237.13594pt x 152.2403pt.
+<../Leroy/leroy_gmm_results/1_gmm_n4.png, id=176, 1304.2326pt x 837.3684pt>
+File: ../Leroy/leroy_gmm_results/1_gmm_n4.png Graphic file (type png)
+<use ../Leroy/leroy_gmm_results/1_gmm_n4.png>
+Package pdftex.def Info: ../Leroy/leroy_gmm_results/1_gmm_n4.png  used on input
+ line 39.
+(pdftex.def)             Requested size: 237.13594pt x 152.2403pt.
+
 
 ) (./main.bbl (./main.brf)
 \tf@brf=\write4
@@ -570,48 +658,58 @@ File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
 
 
 
-Package natbib Warning: Empty `thebibliography' environment on input line 8.
+[5 <../Leroy/leroy_gmm_results/1_gmm_n3.png> <../Leroy/leroy_gmm_results/1_gmm_
+n4.png>])
 
-)
+Package natbib Warning: There were undefined citations.
 
-[2] (./main.aux)
+
+
+
+
+[6
+
+] (./main.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2025-01-18>
  ***********
 Package rerunfilecheck Info: File `main.out' has not changed.
-(rerunfilecheck)             Checksum: E04A52074C0D13A7237EE45E0733BAF4;1868.
+(rerunfilecheck)             Checksum: A28DABD2A9864D03A5E55F223FE777C6;3529.
 Package rerunfilecheck Info: File `main.brf' has not changed.
-(rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
+(rerunfilecheck)             Checksum: 1BBDB67535CCFFC4E9ABE880C231A83D;1087.
  ) 
 Here is how much of TeX's memory you used:
- 15239 strings out of 473190
- 251103 string characters out of 5715801
- 722856 words of memory out of 5000000
- 38247 multiletter control sequences out of 15000+600000
- 588758 words of font info for 103 fonts, out of 8000000 for 9000
+ 15452 strings out of 473190
+ 255951 string characters out of 5715801
+ 723856 words of memory out of 5000000
+ 38417 multiletter control sequences out of 15000+600000
+ 596870 words of font info for 117 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 90i,13n,93p,1115b,464s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 90i,13n,93p,1199b,631s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
 ></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb>
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb><
 /usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></u
-sr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></usr
-/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/l
-ocal/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/loca
-l/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/local/t
-exlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/te
-xlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/local/texl
-ive/2025/texmf-dist/fonts/type1/urw/courier/ucrr8a.pfb></usr/local/texlive/2025
-/texmf-dist/fonts/type1/urw/helvetic/uhvb8a.pfb></usr/local/texlive/2025/texmf-
-dist/fonts/type1/urw/helvetic/uhvr8a.pfb></usr/local/texlive/2025/texmf-dist/fo
-nts/type1/urw/times/utmb8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/
-urw/times/utmr8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/urw/times/
-utmri8a.pfb>
-Output written on main.pdf (2 pages, 173333 bytes).
+sr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr
+/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></usr/l
+ocal/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmib10.pfb></usr/l
+ocal/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/loc
+al/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/local/
+texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/tex
+live/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/local/texliv
+e/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive
+/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2
+025/texmf-dist/fonts/type1/urw/courier/ucrr8a.pfb></usr/local/texlive/2025/texm
+f-dist/fonts/type1/urw/helvetic/uhvb8a.pfb></usr/local/texlive/2025/texmf-dist/
+fonts/type1/urw/helvetic/uhvr8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/t
+ype1/urw/times/utmb8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/urw/t
+imes/utmr8a.pfb></usr/local/texlive/2025/texmf-dist/fonts/type1/urw/times/utmri
+8a.pfb>
+Output written on main.pdf (6 pages, 2717654 bytes).
 PDF statistics:
- 150 PDF objects out of 1000 (max. 8388607)
- 112 compressed objects within 2 object streams
- 16 named destinations out of 1000 (max. 500000)
- 89 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 300 PDF objects out of 1000 (max. 8388607)
+ 245 compressed objects within 3 object streams
+ 48 named destinations out of 1000 (max. 500000)
+ 197 words of extra memory for PDF output out of 10000 (max. 10000000)
 

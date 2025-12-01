@@ -2,47 +2,52 @@ This is BibTeX, Version 0.99d (TeX Live 2025)
 Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: main.aux
 The style file: ieeenat_fullname.bst
-I found no \citation commands---while reading file main.aux
 Database file #1: main.bib
-You've used 0 entries,
+Warning--I didn't find a database entry for "ren2022medical"
+Warning--I didn't find a database entry for "deng2011edge"
+Warning--I didn't find a database entry for "rahman2021exploring"
+Warning--I didn't find a database entry for "dwivedi2025optimizing"
+Warning--I didn't find a database entry for "pham2024enhanced"
+Warning--I didn't find a database entry for "sarritzu2024dropletml"
+You've used 12 entries,
             2708 wiz_defined-function locations,
-            661 strings with 5393 characters,
-and the built_in function-call counts, 33 in all, are:
-= -- 0
-> -- 0
-< -- 0
-+ -- 0
-- -- 0
-* -- 2
-:= -- 10
-add.period$ -- 0
-call.type$ -- 0
-change.case$ -- 0
-chr.to.int$ -- 0
-cite$ -- 0
-duplicate$ -- 0
-empty$ -- 1
-format.name$ -- 0
-if$ -- 1
+            758 strings with 8046 characters,
+and the built_in function-call counts, 5947 in all, are:
+= -- 534
+> -- 362
+< -- 5
++ -- 123
+- -- 111
+* -- 530
+:= -- 934
+add.period$ -- 36
+call.type$ -- 12
+change.case$ -- 68
+chr.to.int$ -- 12
+cite$ -- 24
+duplicate$ -- 247
+empty$ -- 468
+format.name$ -- 129
+if$ -- 1216
 int.to.chr$ -- 1
 int.to.str$ -- 1
-missing$ -- 0
-newline$ -- 8
-num.names$ -- 0
-pop$ -- 0
+missing$ -- 12
+newline$ -- 68
+num.names$ -- 48
+pop$ -- 115
 preamble$ -- 1
-purify$ -- 0
+purify$ -- 56
 quote$ -- 0
-skip$ -- 1
+skip$ -- 176
 stack$ -- 0
-substring$ -- 0
-swap$ -- 0
+substring$ -- 294
+swap$ -- 12
 text.length$ -- 0
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 0
+type$ -- 132
 warning$ -- 0
-while$ -- 0
+while$ -- 57
 width$ -- 0
-write$ -- 7
-(There was 1 error message)
+write$ -- 163
+(There were 6 warnings)

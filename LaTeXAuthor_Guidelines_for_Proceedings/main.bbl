@@ -1,8 +1,91 @@
-\begin{thebibliography}{0}
+\begin{thebibliography}{12}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Allegranzi and Pittet(2011)]{allegranzi2011hand}
+B. Allegranzi and D. Pittet.
+\newblock Role of hand hygiene in healthcare-associated infection prevention.
+\newblock \emph{Journal of Hospital Infection}, 77\penalty0 (4):\penalty0
+  305--315, 2011.
+
+\bibitem[Chang et~al.(2020)Chang, Boltryk, Amarouchene, and
+  Dysthe]{chang2020aerial}
+B. Chang, R.~J. Boltryk, Y. Amarouchene, and D.~K. Dysthe.
+\newblock Aerial mucosalivary droplet dispersal distributions with implications
+  for disease mitigation.
+\newblock \emph{Physical Review Research}, 2\penalty0 (4):\penalty0 043391,
+  2020.
+
+\bibitem[de~Oliveira~Neto et~al.(2024)]{oliveira2024emergence}
+N.~F. de Oliveira~Neto et~al.
+\newblock The emergence of saliva as a diagnostic and prognostic tool for viral
+  infections.
+\newblock \emph{Viruses}, 16\penalty0 (11):\penalty0 1759, 2024.
+
+\bibitem[Loveday et~al.(2014)Loveday, Wilson, Pratt, et~al.]{loveday2014epic3}
+H.~P. Loveday, J.~A. Wilson, R.~J. Pratt, et~al.
+\newblock epic3: National evidence-based guidelines for preventing
+  healthcare-associated infections in nhs hospitals in england.
+\newblock \emph{Journal of Hospital Infection}, 86\penalty0 (Supplement
+  1):\penalty0 S1--S70, 2014.
+
+\bibitem[Magill et~al.(2014)Magill, Edwards, Bamberg,
+  et~al.]{magill2014multistate}
+S.~S. Magill, J.~R. Edwards, W. Bamberg, et~al.
+\newblock Multistate point-prevalence survey of health care–associated
+  infections.
+\newblock \emph{New England Journal of Medicine}, 370\penalty0 (13):\penalty0
+  1198--1208, 2014.
+
+\bibitem[Malamud(2011)]{malamud2011saliva}
+D. Malamud.
+\newblock Saliva as a diagnostic fluid.
+\newblock \emph{Dental Clinics of North America}, 55\penalty0 (1):\penalty0
+  159--178, 2011.
+
+\bibitem[Miranda et~al.(2014)Miranda, Campos, and
+  Pérez]{miranda2014fluorescence}
+G.~E. Miranda, J.~M. Campos, and R. Pérez.
+\newblock Analysis of the fluorescence of body fluids on different surfaces for
+  forensic applications.
+\newblock \emph{Science \& Justice}, 54:\penalty0 427--431, 2014.
+
+\bibitem[Otter et~al.(2013)Otter, Yezli, Salkeld, and
+  French]{otter2013evidence}
+J.~A. Otter, S. Yezli, J.~A.~G. Salkeld, and G.~L. French.
+\newblock Evidence that contaminated surfaces contribute to the transmission of
+  hospital pathogens and an overview of strategies to address contaminated
+  surfaces in hospital settings.
+\newblock \emph{American Journal of Infection Control}, 44\penalty0
+  (5):\penalty0 S6--S11, 2013.
+
+\bibitem[Shah et~al.(2021)]{shah2021assessment}
+S.~H. Shah et~al.
+\newblock Assessment of respiratory droplet transmission during the ophthalmic
+  slit-lamp exam: A particle tracking analysis.
+\newblock \emph{American Journal of Ophthalmology}, 222:\penalty0 76--81, 2021.
+
+\bibitem[To et~al.(2020)To, Tsang, Yip, et~al.]{to2020consistent}
+K.~K.-W. To, O.~T.-Y. Tsang, C.~C.-Y. Yip, et~al.
+\newblock Consistent detection of 2019 novel coronavirus in saliva.
+\newblock \emph{Clinical Infectious Diseases}, 71\penalty0 (15):\penalty0
+  841--843, 2020.
+
+\bibitem[Weber and Rutala(2013)]{weber2013understanding}
+D.~J. Weber and W.~A. Rutala.
+\newblock Understanding and preventing transmission of healthcare-associated
+  pathogens due to the contaminated hospital environment.
+\newblock \emph{Infection Control \& Hospital Epidemiology}, 34\penalty0
+  (5):\penalty0 449--452, 2013.
+
+\bibitem[Wu et~al.(2024)Wu, Zhang, Wu, Jia, and Sun]{wu2024quantitative}
+F. Wu, B. Zhang, J. Wu, R. Jia, and D. Sun.
+\newblock Quantitative measurement and application of droplets on physical
+  surfaces based on laser-induced fluorescence.
+\newblock \emph{Transport Safety and Environment}, 6\penalty0 (2):\penalty0
+  tdad030, 2024.
 
 \end{thebibliography}

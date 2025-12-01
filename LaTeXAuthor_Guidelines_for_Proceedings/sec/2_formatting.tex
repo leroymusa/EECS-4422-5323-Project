@@ -2,22 +2,148 @@
 
 \subsection{Dataset description}
 
-The dataset contains ten UV-C images collected over five substrates (aluminum, steel, white wood, PVC, and wood) along with binary ground-truth masks that highlight four roughly centralized saliva patches per frame. The first eight images serve as the tuning set while the remaining two are held out for testing. Because the masks do not cover the entire surface area and the total number of frames is small, every method must operate in an unsupervised fashion and rely on strong assumptions about color, intensity, and spatial locality.
+The dataset contains ten UV-C images of saliva deposits on five substrates (aluminum, steel, white wood, PVC, and wood) with both wet and dry patches. Each frame is accompanied by a binary mask that highlights four roughly centralized saliva patches. We treat the first eight images as the tuning set and reserve the final two images for blind testing; the masks only cover the salient regions, so every method must operate in an unsupervised fashion while relying heavily on color, contrast, and spatial locality.
+
+\begin{itemize}
+  \item \textbf{Imaging:} High-contrast UV-C photography with fluorescent saliva to accentuate deposits across heterogeneous materials.
+  \item \textbf{Ground truth:} One binary mask per image that marks four foreground regions, which guide plausibility filters and evaluation.
+  \item \textbf{Split:} Images 1-8 serve for parameter tuning, and 9-10 are used to report unseen performance.
+  \item \textbf{Challenge:} The small dataset prevents supervised training, so all methods rely on heuristics shaped by saliva brightness and location.
+\end{itemize}
 
 \subsection{Method A: MATLAB thresholding pipeline}
 
-Method A is a lightweight computer-vision pipeline built in MATLAB. Each RGB image is first converted to luminance using ITU-R BT.601 weights; then Contrast Limited Adaptive Histogram Equalization (CLAHE) compensates for uneven lighting. We apply Otsu's threshold with a learned bias factor that shifts the threshold to include more saliva when the raw threshold underestimates the foreground. Plausibility filters remove regions whose area is either too small (noise) or too large (non-saliva), and we reward regions that lie near the geometric center of the annotated patches. A final morphological cleanup (opening followed by closing) removes tiny speckles and fills holes created by the hard binarization.
+Method A is a lightweight MATLAB pipeline that maximizes recall through contrast enhancement and biased thresholding. We convert RGB frames to luminance using ITU-R BT.601 weights, apply CLAHE to normalize local contrast, and tune a bias for Otsu's threshold so that the resulting binary mask includes more saliva when the default threshold underestimates the foreground.
+
+\subsubsection{Pre-processing}
+
+\begin{itemize}
+  \item \textbf{Luminance conversion:} Each pixel's RGB values are aggregated as \(0.299R + 0.587G + 0.114B\), producing the grayscale images shown in Figures 2a and 2b.
+  \item \textbf{CLAHE:} Contrast Limited Adaptive Histogram Equalization (Figure 2c) equalizes local histograms while limiting noise amplification, making the threshold more stable.
+\end{itemize}
+
+\subsubsection{Training}
+
+Otsu's threshold pulls a level that minimizes intra-class variance on the bimodal histogram (Figure 2d), but it can underestimate saliva in uneven lighting. We therefore learn a bias factor that adjusts the threshold before binarization. The bias is updated as
+
+\begin{equation}
+  t_{\text{new}} = t_{\text{otsu}} \times (1 - \text{bias}),
+\end{equation}
+
+and we sweep this bias on the tuning set to maximize the Dice coefficient. Plausibility filters then remove regions that are either too large (non-saliva) or too small (noise) and reward blobs near the geometric center of the annotated patches. Figure~\ref{fig:method_a_steps} from Felipe’s folder summarizes the six labeled stages (a–g) that produce the cleaned mask.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{../Felipe/Image Method A.png}
+  \caption{Method A pipeline as documented by Felipe: original UV-C image, contrast enhancement, biased thresholding, filtering, and the cleaned binary mask (panels a–g).}
+  \label{fig:method_a_steps}
+\end{figure}
+
+Figure~\ref{fig:bias_tuning} shows the bias tuning curve that calibrates Otsu's threshold; the selected bias of \(-0.18\) makes the mask more permissive and closer to the annotated saliva regions (Figure 3 in the draft).
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{../Felipe/0_Bias_Tuning_Curve.png}
+  \caption{Bias parameter selection used to shift Otsu's threshold toward a more permissive mask (Figure 3).}
+  \label{fig:bias_tuning}
+\end{figure}
+
+\subsubsection{Testing and post-processing}
+
+With the tuned bias (Figure~\ref{fig:bias_tuning}), images 9 and 10 are processed without consulting the ground truth. The same area-based filters remove unrealistic regions, but without direct knowledge of the annotated centroids, we judge centrality relative to the image center. Morphological closing (erosion followed by dilation) closes small gaps (Figure~\ref{fig:method_a_steps}f), and the final mask is compared to the blind ground truth for precision/recall reporting (Figure~\ref{fig:method_a_steps}f).
 
 \subsection{Method B: placeholder}
 
-Method B was reserved for future work and is not implemented in this draft. The focus remains on documenting Methods A and C and on expanding the probabilistic mixture model described in Method D.
+Method B was reserved for future experimentation and remains unimplemented. The emphasis of this draft is on Methods A, C, and the probabilistic extension described in Method D.
 
 \subsection{Method C: exploratory k-means}
 
-Method C runs k-means on the RGB pixels with \(K = 3, 4, 5\) components. Each run is repeated multiple times (typically ten starts) and the best run is selected via the compactness metric (within-cluster sum of squares). We compare the luminance of each center (\(0.114B + 0.587G + 0.299R\)) and label the brightest one as saliva. Every pixel assigned to that center becomes foreground, and morphological opening/closing removes small artifacts while filling interior gaps. No preprocessing beyond the raw RGB conversion is needed because the UV-C illumination already maximizes contrast between saliva and background.
+Method C clusters RGB pixels with k-means. Each run uses ten random starts, and we select the solution with the smallest compactness (within-cluster sum of squares). The centroid with the highest luminance \(0.299R + 0.587G + 0.114B\) is labeled as saliva, and the corresponding pixels form a binary mask that is cleaned with morphological opening and closing.
+
+\subsubsection{Pre-processing}
+
+No pre-processing beyond using raw RGB pixels was required—the UV-C contrast is already sufficient to separate saliva from the background, and Gaussian or median filters degraded performance.
+
+\subsubsection{Clustering}
+
+\begin{itemize}
+  \item Ten runs per image keep the best result by compactness.
+  \item The brightest center identifies saliva, and its assigned pixels become the foreground mask.
+  \item Each mask is cleaned with morphological operations (opening and closing) to remove speckles and fill holes.
+\end{itemize}
+
+\subsubsection{Discussion}
+
+Experiments with \(K=2,3,4,5\) show that \(K=3\) is a good precision/recall balance, \(K=4\) retains high recall while sacrificing some precision, and higher values lose too much recall. Table~\ref{tab:method-c-results} reports the metrics for the \(K=3\) case without pre-processing; the variants that applied filtering produced lower accuracy and recall.
+
+\begin{table}[t]
+  \centering
+  \caption{Method C (\(K=3\)) metrics without pre-processing.}
+  \label{tab:method-c-results}
+  \begin{tabularx}{\linewidth}{@{}lrrrr@{}}
+    \toprule
+    Image & Accuracy & Precision & Recall & Dice \\
+    \midrule
+    1.tif  & 0.997 & 0.937 & 0.896 & 0.916 \\
+    2.tif  & 0.844 & 0.092 & 0.820 & 0.165 \\
+    3.tif  & 0.990 & 0.813 & 0.949 & 0.876 \\
+    4.tif  & 0.960 & 0.432 & 0.895 & 0.583 \\
+    5.tif  & 0.818 & 0.096 & 0.995 & 0.175 \\
+    6.tif  & 0.779 & 0.105 & 0.985 & 0.190 \\
+    7.tif  & 0.987 & 0.671 & 0.923 & 0.777 \\
+    8.tif  & 0.949 & 0.387 & 0.977 & 0.554 \\
+    9.tif  & 0.981 & 0.552 & 0.989 & 0.709 \\
+    10.tif & 0.963 & 0.358 & 0.820 & 0.498 \\
+    \midrule
+    \textbf{Average} & \textbf{0.927} & \textbf{0.444} & \textbf{0.925} & \textbf{0.544} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
 
 \subsection{Method D: probabilistic Gaussian mixture model}
 
-Method D treats each pixel \((R, G, B)\) as a sample from a Gaussian mixture. We fix \(K \in \{3, 4\}\) to match the promising cluster sizes discovered by Method C and fit a full-covariance \(\Sigma_k\) GMM using \(\texttt{sklearn.mixture.GaussianMixture}\). Because the EM algorithm only converges to a local optimum, the pipeline runs \(n_{\text{runs}} = 10\) independent fits per image. The first few runs are seeded with k-means centers collected from Method C, while later runs use random initializations to cover diverse basins of attraction. Each run reports a pseudo-log-likelihood \(\sum_i \log p(\mathbf{x}_i \mid \Theta)\) evaluated on the training data, and we keep the model with the highest likelihood as the most probable solution.
+Method D upgrades the k-means clusters with a full Gaussian mixture model that quantifies uncertainty and chooses the most probable segmentation. Each pixel \(\mathbf{x}_i = (R_i, G_i, B_i)^\top\) is modeled as
 
-The selected model produces posterior probabilities \(P(z_i = k \mid \mathbf{x}_i, \Theta^*)\). We identify the saliva component as the one with the highest luminance and extract \(P_{\text{fg}}(\mathbf{x}_i)\). Thresholding this probability map at 0.5 yields a raw binary mask, which is then cleaned via morphological opening and closing to eliminate small false positives and fill holes. These masks are evaluated against the ground truth with accuracy, precision, recall, and Dice so that the results section can compare the methods on common metrics.
+\[
+  p(\mathbf{x}_i \mid \Theta) = \sum_{k=1}^K \pi_k \, \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)
+\]
+
+with \(K \in \{3,4\}\), full covariances \(\boldsymbol{\Sigma}_k\), and mixture weights \(\pi_k\). Expectation–Maximization is handled by \(\texttt{sklearn.mixture.GaussianMixture}\), while our contribution is the multi-start setup, initialization, and model selection via pseudo-log-likelihood.
+
+\subsubsection{Pre-processing}
+
+\begin{itemize}
+  \item The images remain in RGB space and are reshaped into pixel arrays so the GMM learns the native color distribution.
+  \item Candidate means \(\boldsymbol{\mu}_k^{(0)}\) come from Method C's k-means centers, helping EM start near saliva/background splits.
+  \item No additional smoothing or filtering is applied, keeping preprocessing comparable to the other pipelines.
+\end{itemize}
+
+\subsubsection{Training and model selection}
+
+\begin{itemize}
+  \item For each image and each \(K\), we run \(n_{\text{runs}} = 10\) independent GMM fits mixing k-means seeds with random starts to explore multiple basins of attraction.
+  \item Each fit returns
+
+  \[
+    \text{PLL}(\Theta) = \sum_{i=1}^{N} \log p(\mathbf{x}_i \mid \Theta),
+  \]
+
+  which we use to select the most probable solution because EM only guarantees local convergence.
+  \item EM yields responsibilities
+
+  \[
+    \gamma_{ik} = p(z_i = k \mid \mathbf{x}_i, \Theta^*),
+  \]
+
+  so the foreground probability map \(P_{\text{FG}}(\mathbf{x}_i)\) is given by \(\gamma_{ik_{\text{fg}}}\), where \(k_{\text{fg}}\) is the component with the highest luminance \(Y_k = 0.299R_k + 0.587G_k + 0.114B_k\).
+\end{itemize}
+
+\subsubsection{Mask construction and evaluation}
+
+\begin{itemize}
+  \item We threshold the probability map at 0.5, yielding a soft mask that is refined with morphological opening and closing to remove noise.
+  \item Accuracy, precision, recall, Dice, and the pseudo-log-likelihood of the selected model are recorded for every image and every \(K\); these per-image metrics feed the results summary and demonstrate how likelihood-guided selection aligns with segmentation quality.
+\end{itemize}
+
+This fully probabilistic workflow keeps the interpretability of k-means while adding soft assignments, likelihood-based selection, and quantified uncertainty via the posterior probability maps.
+

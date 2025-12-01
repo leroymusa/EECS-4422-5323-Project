@@ -1,0 +1,9 @@
+Red Channel:
+   Saliva mean=198.60, std=50.61
+   Background mean=73.28, std=45.44
+Green Channel:
+   Saliva mean=23.74, std=12.32
+   Background mean=1.92, std=2.99
+Blue Channel:
+   Saliva mean=20.24, std=12.62
+   Background mean=8.41, std=9.66

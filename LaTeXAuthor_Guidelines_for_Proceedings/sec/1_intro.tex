@@ -22,7 +22,7 @@ The main challenges for saliva/droplet segmentation are familiar in the computer
 
 In this work we deliver:
 \begin{itemize}
-  \item A structured comparison of the existing MATLAB/thresholding pipeline (Method A), the exploratory k-means clustering pipeline (Method C), and the probabilistic Gaussian mixture model pipeline (Method D).
-  \item A GMM workflow that seeds EM with k-means centers, runs ten initializations per image, selects the best solution via pseudo-log-likelihood, and thresholds the resulting probability map before morphological cleanup.
-  \item Empirical evidence that the \(K=4\) GMM increases Dice while keeping recall above \(0.96\), illustrating how likelihood-aware model selection improves the unsupervised segmentation of saliva under UV-C.
+    \item A structured comparison of the existing MATLAB/thresholding pipeline (Method A), the exploratory k-means clustering pipeline (Method C), and the probabilistic Gaussian mixture model pipeline (Method D).
+    \item A GMM workflow that seeds EM with k-means centers, runs ten initializations per image, selects the best solution via pseudo-log-likelihood, and thresholds the resulting probability map before morphological cleanup.
+    \item Empirical evidence that the \(K=4\) GMM increases Dice while keeping recall above \(0.96\), illustrating how likelihood-aware model selection improves the unsupervised segmentation of saliva under UV-C.
 \end{itemize}

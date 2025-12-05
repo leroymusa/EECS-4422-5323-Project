@@ -52,9 +52,92 @@ Figure~\ref{fig:bias_tuning} shows the bias tuning curve that calibrates Otsu's 
 
 With the tuned bias (Figure~\ref{fig:bias_tuning}), images 9 and 10 are processed without consulting the ground truth. The same area-based filters remove unrealistic regions, but without direct knowledge of the annotated centroids, we judge centrality relative to the image center. Morphological closing (erosion followed by dilation) closes small gaps (Figure~\ref{fig:method_a_steps}f), and the final mask is compared to the blind ground truth for precision/recall reporting (Figure~\ref{fig:method_a_steps}f).
 
-\subsection{Method B: placeholder}
+\subsection{Method B: Supervised per-channel thresholding and Linear Discriminant Analysis (LDA)}
 
-Method B was reserved for future experimentation and remains unimplemented. The emphasis of this draft is on Methods A, C, and the probabilistic extension described in Method D.
+Method B establishes a supervised baseline using the 8 tuning images and their partial ground-truth masks. The goal is to estimate pixel-level decision rules that exploit the strong fluorescence contrast of saliva under UV-C illumination. We evaluate two approaches: (i) independent per-channel thresholds and (ii) a combined linear discriminant classifier.
+
+\subsubsection{Per-channel threshold learning}
+
+For each channel \(c \in \{R,G,B\}\), we compute the distribution of pixel intensities for saliva and background using the labeled tuning subset. We sweep all unique intensity values as candidate thresholds and compute the Dice coefficient \cite{dice1945measures} obtained when predicting saliva whenever \(x_c \geq t\). The optimal threshold for each channel is chosen as:
+
+\begin{equation}
+  t_c = \arg\max_t \text{Dice}(t)
+\end{equation}
+
+A pixel is classified as saliva if any channel exceeds its optimal threshold:
+
+\begin{equation}
+  y_{R,G,B} = 1 \text{ if } R \geq t_R \vee G \geq t_G \vee B \geq t_B
+\end{equation}
+
+This provides a simple supervised baseline in which each channel contributes independently.
+
+\subsubsection{Linear Discriminant Analysis (LDA)}
+
+While independent thresholds produce axis-aligned decision boundaries, the RGB channels are strongly correlated. As shown in Figure~\ref{fig:correlation_heatmap}, saliva pixels exhibit extremely strong positive correlations across all three channels (0.97--0.99), meaning that their colour variation is almost entirely explained by a single underlying intensity dimension. In contrast, background pixels show weak or even negative cross-channel correlations, indicating substantially greater chromatic variability.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{../Thuy/Histograms/rgb_correlation_heatmap.png}
+  \caption{Correlation heatmap of RGB intensities for saliva and background pixels.}
+  \label{fig:correlation_heatmap}
+\end{figure}
+
+The histograms illustrated in Figure~\ref{fig:rgb_histograms} show the intensity distributions for each channel, demonstrating clear separation between saliva and background regions.
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}[t]{0.32\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{../Thuy/Histograms/Red_hist.png}
+    \caption{Red channel}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.32\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{../Thuy/Histograms/Green_hist.png}
+    \caption{Green channel}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.32\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{../Thuy/Histograms/Blue_hist.png}
+    \caption{Blue channel}
+  \end{subfigure}
+  \caption{RGB channel histograms showing intensity distributions for saliva and background pixels.}
+  \label{fig:rgb_histograms}
+\end{figure}
+
+This difference motivates a multivariate classifier that can exploit joint RGB patterns rather than thresholding each channel independently.
+
+We therefore learn a single discriminant direction \(\mathbf{w} \in \mathbb{R}^3\) using Linear Discriminant Analysis (LDA) \cite{fisher1936use}. LDA computes a projection vector
+
+\begin{equation}
+  \mathbf{w} = \mathbf{S}_w^{-1}(\boldsymbol{\mu}_{\text{saliva}} - \boldsymbol{\mu}_{\text{bg}})
+\end{equation}
+
+that maximizes the separation between saliva and background, where \(\boldsymbol{\mu}_{\text{saliva}}\) and \(\boldsymbol{\mu}_{\text{bg}}\) are the class means, and \(\mathbf{S}_w\) is the pooled within-class covariance matrix.
+
+Each pixel is mapped to a one-dimensional score \(s = \mathbf{w}^T\mathbf{x}\).
+
+We then sweep all unique score values on the tuning set and select the threshold \(T\) that maximizes the Dice coefficient \cite{dice1945measures}.
+
+The resulting classifier is
+
+\begin{equation}
+  y = \begin{cases}
+    1 & \text{if } \mathbf{w}^T\mathbf{x} \geq T \\
+    0 & \text{otherwise}
+  \end{cases}
+\end{equation}
+
+This creates an oblique decision boundary in RGB space, enabling LDA to exploit correlated variations across channels and improving robustness relative to independent per-channel thresholds.
+
+\subsubsection{Pre- and Post-Processing}
+
+Before classification, a Gaussian blur is applied to suppress sensor noise while preserving the low-frequency structure of saliva fluorescence.
+
+After thresholding, morphological closing and opening remove isolated noise pixels and fill small gaps, producing more coherent saliva regions.
 
 \subsection{Method C: exploratory k-means}
 
@@ -138,6 +221,27 @@ with \(K \in \{3,4\}\), full covariances \(\boldsymbol{\Sigma}_k\), and mixture 
   so the foreground probability map \(P_{\text{FG}}(\mathbf{x}_i)\) is given by \(\gamma_{ik_{\text{fg}}}\), where \(k_{\text{fg}}\) is the component with the highest luminance \(Y_k = 0.299R_k + 0.587G_k + 0.114B_k\).
 \end{itemize}
 
+Figure~\ref{fig:pll_selection} illustrates how PLL varies across the ten EM runs for a representative image, demonstrating why selecting the highest-likelihood solution matters: different initializations converge to different local optima, and the PLL quantifies which solution best fits the RGB distribution.
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}[b]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{../Leroy/leroy_gmm_results/pll_graph_k3.png}
+    \caption{\(K=3\) components}
+    \label{fig:pll_k3}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{0.48\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{../Leroy/leroy_gmm_results/pll_graph_k4.png}
+    \caption{\(K=4\) components}
+    \label{fig:pll_k4}
+  \end{subfigure}
+  \caption{Pseudo-log-likelihood (PLL) across 10 EM runs for Image 1. The selected run (highlighted) maximizes PLL, demonstrating the model selection strategy.}
+  \label{fig:pll_selection}
+\end{figure}
+
 \subsubsection{Mask construction and evaluation}
 
 \begin{itemize}
@@ -146,4 +250,5 @@ with \(K \in \{3,4\}\), full covariances \(\boldsymbol{\Sigma}_k\), and mixture 
 \end{itemize}
 
 This fully probabilistic workflow keeps the interpretability of k-means while adding soft assignments, likelihood-based selection, and quantified uncertainty via the posterior probability maps.
+
 

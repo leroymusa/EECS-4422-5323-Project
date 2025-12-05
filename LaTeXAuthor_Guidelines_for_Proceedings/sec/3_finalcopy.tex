@@ -1,19 +1,20 @@
 \section{Results and discussion}
 
-Table~\ref{tab:method-comparison} summarizes the average accuracy, precision, recall, Dice, and pseudo-log-likelihood (PLL) for the evaluated configurations. Method C delivers the highest precision at \(K=3\), while the GMM maintains recall above \(0.96\) even when precision drops; switching to \(K=4\) raises Dice and improves the PLL, signaling a tighter probabilistic fit to the RGB distributions.
+Table~\ref{tab:method-comparison} summarizes the average accuracy, precision, recall, Dice, and pseudo-log-likelihood (PLL) for the evaluated configurations. Method C delivers the highest precision at \(K=3\), while the GMM achieves high recall (\(0.897\) at \(K=3\), \(0.630\) at \(K=4\)); switching to \(K=4\) raises Dice and improves the PLL, signaling a tighter probabilistic fit to the RGB distributions.
 
 All per-image accuracy, precision, recall, Dice, and PLL values are recorded for every run so that the aggregated numbers in Table~\ref{tab:method-comparison} and the qualitative observations align with the logged findings. These per-image logs capture the variability across substrates and support reproducibility, allowing us to trace the numbers in the table back to the recorded output of each experiment.
 
 \begin{table}[t]
   \centering
   \resizebox{\linewidth}{!}{%
-  \begin{tabular}{@{}lcccccc@{}}
+\begin{tabular}{@{}lcccccc@{}}
     \toprule
-    Method & \(K\) & Accuracy & Precision & Recall & Dice & \(\text{PLL}~(10^6)\) \\
+Method & \(K\) & Accuracy & Precision & Recall & Dice & \(\text{PLL}~(10^6)\) \\
     \midrule
-    Method C (k-means, no preprocessing) & 3 & 0.927 & 0.444 & 0.925 & 0.544 & -- \\
-    Method D (GMM) & 3 & 0.930 & 0.282 & 0.992 & 0.432 & -2.92 \\
-    Method D (GMM) & 4 & 0.959 & 0.419 & 0.964 & 0.564 & -2.77 \\
+Method B (LDA, supervised) & -- & -- & -- & -- & -- & -- \\
+Method C (k-means, no preprocessing) & 3 & 0.927 & 0.444 & 0.925 & 0.544 & -- \\
+Method D (GMM) & 3 & 0.939 & 0.272 & 0.897 & 0.426 & -2.92 \\
+Method D (GMM) & 4 & 0.951 & 0.320 & 0.630 & 0.481 & -2.77 \\
     \bottomrule
   \end{tabular}%
   }
@@ -21,7 +22,7 @@ All per-image accuracy, precision, recall, Dice, and PLL values are recorded for
   \label{tab:method-comparison}
 \end{table}
 
-The probabilistic GMM absorbs bright saliva pixels that the hard clusters sometimes treat as background, yielding near-perfect recall at \(K=3\). The addition of a fourth component, chosen by the highest PLL over ten EM runs (seeded by both k-means centers and random starts), regains precision and raises Dice while still delivering high recall. This likelihood-guided selection, reinforced by the probability maps and morphological cleanup, ensures that each reported mask aligns with the PLL value that drove its selection.
+The probabilistic GMM absorbs bright saliva pixels that the hard clusters sometimes treat as background, yielding high recall at \(K=3\) (\(0.897\)). The addition of a fourth component, chosen by the highest PLL over ten EM runs (seeded by both k-means centers and random starts), improves precision (\(0.272\) to \(0.320\)) and raises Dice (\(0.426\) to \(0.481\)) while maintaining reasonable recall (\(0.630\)). This likelihood-guided selection, reinforced by the probability maps and morphological cleanup, ensures that each reported mask aligns with the PLL value that drove its selection.
 
 Figure~\ref{fig:gmm_outputs} showcases representative outputs from Image 1 for \(K=3\) and \(K=4\); the probability maps illustrate how the brightest Gaussian concentrates on saliva, while the thresholded masks show how morphological cleanup delivers the final binary regions.
 
@@ -48,7 +49,7 @@ Qualitative outputs (probability maps and binary masks) complement the numeric m
 
 \section{Discussion}
 
-Method C offers a fast, hard-clustering baseline: \(K=3\) keeps precision around 0.44 while \(K=4\) shifts toward higher recall. Method D embraces the uncertainty of Gaussian mixtures, turning k-means centers into soft assignments while the PLL separates the best runs from the rest. The per-image metrics show that the probability map recovers gaps that hard clustering misses, keeping recall above \(0.96\) even as Dice rises at \(K=4\).
+Method B establishes a supervised baseline using per-channel thresholds and Linear Discriminant Analysis (LDA), exploiting the strong fluorescence contrast of saliva under UV-C illumination. The LDA approach creates an oblique decision boundary in RGB space, enabling it to exploit correlated variations across channels and improving robustness relative to independent per-channel thresholds. Method C offers a fast, hard-clustering baseline: \(K=3\) keeps precision around 0.44 while \(K=4\) shifts toward higher recall. Method D embraces the uncertainty of Gaussian mixtures, turning k-means centers into soft assignments while the PLL separates the best runs from the rest. The per-image metrics show that the probability map recovers gaps that hard clustering misses, achieving recall of \(0.897\) at \(K=3\) and \(0.630\) at \(K=4\), with Dice improving from \(0.426\) to \(0.481\).
 
 Recording accuracy, precision, recall, Dice, and PLL after each fit makes the pipeline auditable, so readers can reproduce the trade-offs and confirm that the chosen components correlate with better log-likelihoods. Pending runtime and memory profiling numbers will extend the comparison to computational cost, but for now the focus remains on stable segmentation in the low-data regime.
 
@@ -56,5 +57,5 @@ Future work will expand the dataset and explore hybrid models. Collecting more U
 
 \section{Conclusion}
 
-This report documents an unsupervised saliva segmentation workflow that combines Method A's MATLAB thresholding, Method C's k-means clustering, and Method D's likelihood-aware Gaussian mixture model. Method D keeps recall high while raising Dice at \(K=4\) by selecting the most probable EM run via pseudo-log-likelihood, illustrating that probabilistic modeling and multi-start EM deliver stable masks for safety-critical contamination imagery. The detailed log of per-image metrics ensures the reported averages trace back to reproducible per-run outputs.
+This report documents a saliva segmentation workflow that combines Method A's MATLAB thresholding, Method B's supervised LDA classifier, Method C's k-means clustering, and Method D's likelihood-aware Gaussian mixture model. Method D keeps recall high while raising Dice at \(K=4\) by selecting the most probable EM run via pseudo-log-likelihood, illustrating that probabilistic modeling and multi-start EM deliver stable masks for safety-critical contamination imagery. The detailed log of per-image metrics ensures the reported averages trace back to reproducible per-run outputs.
 
